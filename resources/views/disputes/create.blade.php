@@ -1,74 +1,5 @@
 
-# === DISPUTES INDEX (recréation) + CREATE + SHOW ===
-
-disputes_index = r"""@extends('layouts.app')
-
-@section('title', 'Mes litiges')
-
-@section('content')
-<section class="py-8 px-4 sm:px-6 lg:px-8 bg-slate-50 min-h-screen">
-    <div class="max-w-7xl mx-auto">
-        <div class="mb-8">
-            <h1 class="text-2xl font-bold text-slate-900">Mes litiges</h1>
-            <p class="text-slate-500">Historique de vos litiges et reclamations</p>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            @if($disputes->count() > 0)
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-slate-50 border-b border-slate-100">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Transaction</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Motif</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Statut</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Date</th>
-                                <th class="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach($disputes as $dispute)
-                                <tr class="hover:bg-slate-50 transition-colors">
-                                    <td class="px-6 py-4">
-                                        <p class="text-sm font-medium text-slate-900">{{ Str::limit($dispute->transaction->product_name, 25) }}</p>
-                                        <p class="text-xs text-slate-500">{{ $dispute->transaction->reference }}</p>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-slate-600">{{ $dispute->getReasonLabel() }}</td>
-                                    <td class="px-6 py-4">
-                                        @php
-                                        $statusColors = ['open' => 'red', 'under_review' => 'amber', 'resolved_buyer' => 'emerald', 'resolved_seller' => 'emerald', 'closed' => 'slate'];
-                                        $statusLabels = ['open' => 'Ouvert', 'under_review' => 'En cours', 'resolved_buyer' => 'Resolu (acheteur)', 'resolved_seller' => 'Resolu (vendeur)', 'closed' => 'Ferme'];
-                                        @endphp
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-{{ $statusColors[$dispute->status] }}-100 text-{{ $statusColors[$dispute->status] }}-800">
-                                            {{ $statusLabels[$dispute->status] }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-slate-500">{{ $dispute->created_at->format('d/m/Y') }}</td>
-                                    <td class="px-6 py-4 text-right">
-                                        <a href="{{ route('disputes.show', $dispute) }}" class="text-sm text-emerald-600 hover:text-emerald-700 font-medium">Voir</a>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                <div class="px-6 py-4 border-t border-slate-100">{{ $disputes->links() }}</div>
-            @else
-                <div class="px-6 py-16 text-center">
-                    <div class="w-20 h-20 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                        <svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-medium text-slate-900 mb-2">Aucun litige</h3>
-                    <p class="text-slate-500">Vous n'avez aucun litige en cours</p>
-                </div>
-            @endif
-        </div>
-    </div>
-</section>
-@endsection
-"""
+# === DISPUTES : CREATE & SHOW (recréation complète) ===
 
 dispute_create = r"""@extends('layouts.app')
 
@@ -261,13 +192,14 @@ dispute_show = r"""@extends('layouts.app')
 @endsection
 """
 
-with open('/mnt/agents/output/payxora-togo/resources/views/disputes/index.blade.php', 'w') as f:
-    f.write(disputes_index)
-
 with open('/mnt/agents/output/payxora-togo/resources/views/disputes/create.blade.php', 'w') as f:
     f.write(dispute_create)
 
 with open('/mnt/agents/output/payxora-togo/resources/views/disputes/show.blade.php', 'w') as f:
     f.write(dispute_show)
 
-print("✅ disputes/index, create, show crees")
+# Fix empty disputes/index
+with open('/mnt/agents/output/payxora-togo/resources/views/disputes/index.blade.php', 'w') as f:
+    f.write(disputes_index)
+
+print("✅ 3 pages litiges crees/corriges")
