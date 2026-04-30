@@ -15,8 +15,10 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('phone')->unique();
             $table->string('password');
-            $table->enum('role', ['buyer', 'seller', 'admin'])->default('buyer');
-            $table->enum('kyc_status', ['pending', 'verified', 'rejected'])->default('pending');
+            // $table->enum('role', ['buyer', 'seller', 'admin'])->default('buyer');
+            $table->string('role')->default('buyer');
+            // $table->enum('kyc_status', ['pending', 'verified', 'rejected'])->default('pending');
+            $table->string('kyc_status')->default('pending');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('profile_photo')->nullable();
             $table->string('id_document')->nullable();

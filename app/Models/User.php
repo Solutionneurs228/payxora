@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\UserRole;
+use App\Enums\KycStatus;
 
 class User extends Authenticatable
 {
@@ -35,6 +37,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_active' => 'boolean',
+         'role' => UserRole::class,
     ];
 
     protected $appends = ['full_name', 'initials'];
@@ -59,11 +62,20 @@ class User extends Authenticatable
         return $this->role === 'seller';
     }
 
+    public function kycProfile()
+{
+    return $this->hasOne(KycProfile::class);
+}
+
+
     public function isKycVerified(): bool
     {
         return $this->kyc_status === 'verified';
     }
-
+public function isKycApproved(): bool
+{
+    return $this->kycProfile && $this->kycProfile->status === KycStatus::APPROVED;
+}
     public function transactionsAsSeller()
     {
         return $this->hasMany(Transaction::class, 'seller_id');
