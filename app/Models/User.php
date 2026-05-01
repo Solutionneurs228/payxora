@@ -57,10 +57,18 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    // public function isSeller(): bool
+    // {
+    //     return $this->role === 'seller';
+    // }
+
     public function isSeller(): bool
-    {
-        return $this->role === 'seller';
-    }
+{
+    return in_array($this->role, ['seller', 'admin']);
+}
+
+
+
 
     public function kycProfile()
 {

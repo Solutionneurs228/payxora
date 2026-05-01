@@ -2,6 +2,7 @@
 
 return [
 
+App\Providers\PaymentServiceProvider::class,
     /*
     |--------------------------------------------------------------------------
     | Application Name

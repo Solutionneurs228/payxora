@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\TransactionStatus;
 
 class Transaction extends Model
 {
@@ -44,6 +45,7 @@ class Transaction extends Model
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'dispute_deadline' => 'datetime',
+        'status' => TransactionStatus::class,
     ];
 
     protected static function boot()
@@ -111,7 +113,7 @@ class Transaction extends Model
 
     public function canOpenDispute(): bool
     {
-        return in_array($this->status, ['shipped', 'delivered']) 
+        return in_array($this->status, ['shipped', 'delivered'])
             && $this->dispute_deadline && $this->dispute_deadline->isFuture();
     }
 
