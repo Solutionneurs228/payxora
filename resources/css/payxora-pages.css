@@ -1,0 +1,49 @@
+/* PayXora Pages v2 - Styles complementaires */
+
+/* Float animation */
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+/* Stat counter */
+.stat-counter {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Step card hover */
+.step-card {
+    transition: all 0.3s ease;
+}
+
+.step-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px -10px rgba(5, 150, 105, 0.3);
+}
+
+/* Smooth scroll */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #059669;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #047857;
+}

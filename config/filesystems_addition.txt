@@ -1,0 +1,13 @@
+# Ajouter dans config/filesystems.php, dans le tableau 'disks' :
+
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'url' => env('APP_URL').'/storage/private',
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
+# Puis creer le dossier :
+# mkdir -p storage/app/private
+# chmod 750 storage/app/private

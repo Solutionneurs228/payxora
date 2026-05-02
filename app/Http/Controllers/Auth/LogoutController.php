@@ -8,11 +8,16 @@ use Illuminate\Support\Facades\Auth;
 
 class LogoutController extends Controller
 {
+    /**
+     * Deconnecte l'utilisateur.
+     */
     public function store(Request $request)
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect()->route('home')->with('success', 'Deconnexion reussie.');
+
+        return redirect('/')->with('success', 'Vous etes deconnecte.');
     }
 }

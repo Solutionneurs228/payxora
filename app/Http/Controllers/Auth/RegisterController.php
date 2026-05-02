@@ -3,48 +3,42 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
+use App\Enums\UserRole;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Hash;
 
 class RegisterController extends Controller
 {
+    /**
+     * Affiche le formulaire d'inscription.
+     */
     public function show()
     {
         return view('auth.register');
     }
 
-    public function store(Request $request)
+    /**
+     * Cree un nouvel utilisateur.
+     */
+    public function store(RegisterRequest $request)
     {
-        $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'phone' => ['required', 'string', 'regex:/^\+228[0-9]{8}$/', 'unique:users,phone'],
-            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
-            'role' => ['required', 'in:buyer,seller'],
-            'terms' => ['required', 'accepted'],
-        ], [
-            'phone.regex' => 'Le numero doit etre au format +228XXXXXXXX.',
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => Hash::make($request->password),
+            'role' => UserRole::USER->value,
         ]);
 
-        $user = User::create([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'],
-            'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
-            'kyc_status' => 'pending',
-        ]);
+        event(new Registered($user));
 
         Auth::login($user);
 
-        \App\Services\BrevoService::sendWelcomeEmail($user);
-
         return redirect()->route('kyc.show')
-            ->with('success', 'Bienvenue ! Completez votre verification pour continuer.');
+            ->with('success', 'Bienvenue sur PayXora ! Veuillez completer votre verification d\'identite.');
     }
 }

@@ -2,48 +2,47 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Admin
+        // Admin user
         User::create([
-            'first_name' => 'Admin',
-            'last_name' => 'PayXora',
+            'name' => 'Administrateur PayXora',
             'email' => 'admin@payxora.tg',
-            'phone' => '+22890000000',
+            'phone' => '+22890123456',
             'password' => Hash::make('password'),
             'role' => 'admin',
-            'kyc_status' => 'verified',
             'is_active' => true,
         ]);
 
-        // Vendeur test
+        // Demo seller
         User::create([
-            'first_name' => 'Kossi',
-            'last_name' => 'Amedegnato',
-            'email' => 'vendeur@payxora.tg',
-            'phone' => '+22891111111',
+            'name' => 'Vendeur Demo',
+            'email' => 'seller@payxora.tg',
+            'phone' => '+22890123457',
             'password' => Hash::make('password'),
-            'role' => 'seller',
-            'kyc_status' => 'verified',
+            'role' => 'user',
             'is_active' => true,
         ]);
 
-        // Acheteur test
+        // Demo buyer
         User::create([
-            'first_name' => 'Afi',
-            'last_name' => 'Kodjo',
-            'email' => 'acheteur@payxora.tg',
-            'phone' => '+22892222222',
+            'name' => 'Acheteur Demo',
+            'email' => 'buyer@payxora.tg',
+            'phone' => '+22890123458',
             'password' => Hash::make('password'),
-            'role' => 'buyer',
-            'kyc_status' => 'verified',
+            'role' => 'user',
             'is_active' => true,
         ]);
+
+        $this->command->info('Users seeded successfully!');
+        $this->command->info('Admin: admin@payxora.tg / password');
+        $this->command->info('Seller: seller@payxora.tg / password');
+        $this->command->info('Buyer: buyer@payxora.tg / password');
     }
 }

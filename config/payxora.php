@@ -3,62 +3,47 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Paramètres de commission
+    | Configuration PayXora - Plateforme Escrow
     |--------------------------------------------------------------------------
     */
-    'commission' => [
-        'rate' => 0.03, // 3% par transaction
-        'minimum' => 500, // FCFA minimum
-        'maximum' => 50000, // FCFA maximum
-    ],
+
+    'commission_rate' => env('PAYXORA_COMMISSION_RATE', 3.0), // % par transaction
+    'withdrawal_fee' => env('PAYXORA_WITHDRAWAL_FEE', 500), // FCFA
+    'min_transaction_amount' => env('PAYXORA_MIN_AMOUNT', 100), // FCFA
+    'max_transaction_amount' => env('PAYXORA_MAX_AMOUNT', 10000000), // FCFA
+    'escrow_hold_days' => env('PAYXORA_ESCROW_DAYS', 2), // jours avant auto-liberation
+    'dispute_response_hours' => env('PAYXORA_DISPUTE_HOURS', 48), // heures pour repondre
 
     /*
     |--------------------------------------------------------------------------
-    | Délai de confirmation de livraison
-    |--------------------------------------------------------------------------
-    */
-    'confirmation_deadline_hours' => 48,
-
-    /*
-    |--------------------------------------------------------------------------
-    | Limites de transaction
-    |--------------------------------------------------------------------------
-    */
-    'limits' => [
-        'min_amount' => 1000, // FCFA
-        'max_amount' => 5000000, // FCFA
-        'beta_max_amount' => 50000, // FCFA en phase beta
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Providers Mobile Money
+    | Mobile Money Providers
     |--------------------------------------------------------------------------
     */
     'payment_providers' => [
         'tmoney' => [
-            'enabled' => true,
+            'name' => 'TMoney (Togocom)',
+            'enabled' => env('TMONEY_ENABLED', true),
             'api_url' => env('TMONEY_API_URL'),
             'api_key' => env('TMONEY_API_KEY'),
-            'merchant_id' => env('TMONEY_MERCHANT_ID'),
         ],
         'moov' => [
-            'enabled' => true,
+            'name' => 'Moov Money',
+            'enabled' => env('MOOV_ENABLED', true),
             'api_url' => env('MOOV_API_URL'),
             'api_key' => env('MOOV_API_KEY'),
-            'merchant_id' => env('MOOV_MERCHANT_ID'),
         ],
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Configuration KYC
+    | KYC Configuration
     |--------------------------------------------------------------------------
     */
     'kyc' => [
         'required' => true,
-        'id_types' => ['cni', 'passport', 'residence'],
-        'auto_approve' => false, // false = validation manuelle par admin
+        'auto_approve' => env('PAYXORA_KYC_AUTO_APPROVE', false),
+        'id_types' => ['passport', 'cni', 'driving_license'],
+        'max_file_size' => 2048, // KB
     ],
 
     /*
@@ -67,25 +52,8 @@ return [
     |--------------------------------------------------------------------------
     */
     'notifications' => [
-        'email' => [
-            'enabled' => true,
-            'from_address' => env('MAIL_FROM_ADDRESS', 'noreply@payxora.tg'),
-            'from_name' => env('MAIL_FROM_NAME', 'PayXora'),
-        ],
-        'sms' => [
-            'enabled' => false, // Activer quand API SMS dispo
-            'provider' => null,
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Compte séquestre
-    |--------------------------------------------------------------------------
-    */
-    'escrow' => [
-        'account_number' => env('ESCROW_ACCOUNT_NUMBER'),
-        'bank_name' => env('ESCROW_BANK_NAME', 'ECOBANK'),
-        'holder_name' => env('ESCROW_HOLDER_NAME', 'PAYXORA SARL'),
+        'email_enabled' => env('PAYXORA_EMAIL_NOTIFICATIONS', true),
+        'sms_enabled' => env('PAYXORA_SMS_NOTIFICATIONS', false),
+        'brevo_api_key' => env('BREVO_API_KEY'),
     ],
 ];

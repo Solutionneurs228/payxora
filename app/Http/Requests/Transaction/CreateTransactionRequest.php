@@ -8,33 +8,33 @@ class CreateTransactionRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->isSeller();
+        return true;
     }
 
     public function rules(): array
     {
-        $minAmount = config('payxora.limits.min_amount', 1000);
-        $maxAmount = config('payxora.limits.max_amount', 5000000);
-
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:5000'],
-            'amount' => ['required', 'numeric', 'min:' . $minAmount, 'max:' . $maxAmount],
-            'currency' => ['nullable', 'string', 'size:3', 'in:XOF'],
-            'delivery_address' => ['nullable', 'string', 'max:1000'],
+            'title' => ['required', 'string', 'max:255', 'min:3'],
+            'description' => ['required', 'string', 'max:2000'],
+            'amount' => ['required', 'numeric', 'min:100', 'max:10000000'],
+            'buyer_email' => ['required', 'email', 'max:255'],
+            'delivery_conditions' => ['required', 'string', 'max:1000'],
+            'delivery_deadline_days' => ['required', 'integer', 'min:1', 'max:30'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'title.required' => 'Le titre de la transaction est requis.',
-            'title.max' => 'Le titre ne doit pas dépasser 255 caractères.',
-            'amount.required' => 'Le montant est requis.',
-            'amount.numeric' => 'Le montant doit être un nombre.',
-            'amount.min' => 'Le montant minimum est de :min FCFA.',
-            'amount.max' => 'Le montant maximum est de :max FCFA.',
-            'currency.in' => 'La devise doit être XOF.',
+            'title.required' => 'Le titre de la transaction est obligatoire.',
+            'title.min' => 'Le titre doit contenir au moins 3 caracteres.',
+            'description.required' => 'La description est obligatoire.',
+            'amount.required' => 'Le montant est obligatoire.',
+            'amount.min' => 'Le montant minimum est de 100 FCFA.',
+            'amount.max' => 'Le montant maximum est de 10 000 000 FCFA.',
+            'buyer_email.required' => 'L\'email de l\'acheteur est obligatoire.',
+            'delivery_conditions.required' => 'Les conditions de livraison sont obligatoires.',
+            'delivery_deadline_days.required' => 'Le delai de livraison est obligatoire.',
         ];
     }
 }
