@@ -8,120 +8,110 @@ use App\Models\Dispute;
 use App\Models\DisputeMessage;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DisputeService
 {
+    public function __construct(
+        private EscrowService $escrowService,
+        private NotificationService $notificationService,
+    ) {}
+
     /**
-     * Créer un litige
+     * Ouvrir un litige
      */
-    public function createDispute(Transaction $transaction, string $reason): Dispute
+    public function open(Transaction $transaction, string $reason, ?string $description = null): Dispute
     {
-        $dispute = Dispute::create([
-            'transaction_id' => $transaction->id,
-            'initiator_id' => Auth::id(),
-            'reason' => $reason,
-            'status' => DisputeStatus::OPEN->value,
-            'resolution' => 'none',
-        ]);
+        return DB::transaction(function () use ($transaction, $reason, $description) {
+            $dispute = Dispute::create([
+                'transaction_id' => $transaction->id,
+                'initiator_id' => Auth::id(),
+                'reason' => $reason,
+                'description' => $description,
+                'status' => DisputeStatus::OPEN,
+            ]);
 
-        // Mettre la transaction en litige
-        app(EscrowService::class)->dispute($transaction, Auth::id(), $reason);
+            $this->escrowService->dispute($transaction, Auth::id(), $reason);
 
-        return $dispute;
+            $this->notificationService->notifyDisputeOpened($transaction, Auth::user());
+
+            return $dispute;
+        });
     }
 
     /**
-     * Ajouter un message au litige
+     * Repondre a un litige
      */
-    public function addMessage(Dispute $dispute, string $message, ?array $attachment = null): DisputeMessage
+    public function reply(Dispute $dispute, string $message): DisputeMessage
     {
-        $disputeMessage = DisputeMessage::create([
+        $this->authorizeAccess($dispute);
+
+        return DisputeMessage::create([
             'dispute_id' => $dispute->id,
             'user_id' => Auth::id(),
             'message' => $message,
-            'attachment_path' => $attachment['path'] ?? null,
         ]);
-
-        return $disputeMessage;
     }
 
     /**
-     * Démarrer la médiation
+     * Arbitrer un litige (admin)
      */
-    public function startMediation(Dispute $dispute): void
+    public function arbitrate(Dispute $dispute, string $resolution, ?string $notes = null): bool
     {
+        if (!Auth::user()->isAdmin()) {
+            abort(403, 'Seul un administrateur peut arbitrer.');
+        }
+
+        return DB::transaction(function () use ($dispute, $resolution, $notes) {
+            $dispute->update([
+                'status' => DisputeStatus::RESOLVED,
+                'resolution' => $resolution,
+                'resolution_notes' => $notes,
+                'resolved_at' => now(),
+                'resolved_by' => Auth::id(),
+            ]);
+
+            $transaction = $dispute->transaction;
+
+            if ($resolution === 'refund_buyer') {
+                $this->escrowService->refund($transaction);
+            } elseif ($resolution === 'release_seller') {
+                $this->escrowService->complete($transaction);
+            }
+
+            $this->notificationService->notifyDisputeResolved($transaction, $resolution);
+
+            return true;
+        });
+    }
+
+    /**
+     * Fermer un litige
+     */
+    public function close(Dispute $dispute): bool
+    {
+        if (!Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
         $dispute->update([
-            'status' => DisputeStatus::MEDIATING->value,
+            'status' => DisputeStatus::CLOSED,
+            'closed_at' => now(),
+            'closed_by' => Auth::id(),
         ]);
 
-        // Notifier les parties
-        app(NotificationService::class)->notifyMediationStarted($dispute);
+        return true;
     }
 
-    /**
-     * Résoudre le litige - rembourser l'acheteur
-     */
-    public function resolveRefund(Dispute $dispute): void
+    private function authorizeAccess(Dispute $dispute): void
     {
-        DB::transaction(function () use ($dispute) {
-            $dispute->update([
-                'status' => DisputeStatus::RESOLVED->value,
-                'resolution' => 'refund_buyer',
-                'refund_amount' => $dispute->transaction->amount,
-                'resolved_at' => now(),
-            ]);
+        $user = Auth::user();
+        $transaction = $dispute->transaction;
 
-            app(EscrowService::class)->refund($dispute->transaction);
-        });
-
-        app(NotificationService::class)->notifyDisputeResolved($dispute, 'refund');
-    }
-
-    /**
-     * Résoudre le litige - payer le vendeur
-     */
-    public function resolvePaySeller(Dispute $dispute): void
-    {
-        DB::transaction(function () use ($dispute) {
-            $dispute->update([
-                'status' => DisputeStatus::RESOLVED->value,
-                'resolution' => 'pay_seller',
-                'resolved_at' => now(),
-            ]);
-
-            app(EscrowService::class)->complete($dispute->transaction);
-        });
-
-        app(NotificationService::class)->notifyDisputeResolved($dispute, 'pay_seller');
-    }
-
-    /**
-     * Résoudre le litige - split
-     */
-    public function resolveSplit(Dispute $dispute, float $refundAmount): void
-    {
-        DB::transaction(function () use ($dispute, $refundAmount) {
-            $dispute->update([
-                'status' => DisputeStatus::RESOLVED->value,
-                'resolution' => 'split',
-                'refund_amount' => $refundAmount,
-                'resolved_at' => now(),
-            ]);
-
-            // Logique de split à implémenter
-        });
-
-        app(NotificationService::class)->notifyDisputeResolved($dispute, 'split');
-    }
-
-    /**
-     * Clôturer le litige
-     */
-    public function close(Dispute $dispute): void
-    {
-        $dispute->update([
-            'status' => DisputeStatus::CLOSED->value,
-            'resolved_at' => now(),
-        ]);
+        if ($transaction->seller_id !== $user->id
+            && $transaction->buyer_id !== $user->id
+            && !$user->isAdmin()) {
+            abort(403);
+        }
     }
 }

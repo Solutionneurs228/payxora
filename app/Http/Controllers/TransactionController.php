@@ -2,19 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TransactionStatus;
+use App\Http\Requests\Transaction\CreateTransactionRequest;
+use App\Models\ActivityLog;
+use App\Models\Notification;
+use App\Models\Transaction;
+use App\Services\EscrowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Transaction;
-use App\Models\Notification;
-use App\Models\ActivityLog;
 
 class TransactionController extends Controller
 {
+    public function __construct(
+        private EscrowService $escrowService
+    ) {}
+
     public function index()
     {
         $user = Auth::user();
+
         $transactions = Transaction::where('seller_id', $user->id)
             ->orWhere('buyer_id', $user->id)
+            ->with(['seller', 'buyer', 'payment'])
             ->latest()
             ->paginate(15);
 
@@ -26,31 +35,24 @@ class TransactionController extends Controller
         return view('transactions.create');
     }
 
-    public function store(Request $request)
+    public function store(CreateTransactionRequest $request)
     {
-        $validated = $request->validate([
-            'product_name' => ['required', 'string', 'max:255'],
-            'product_description' => ['nullable', 'string', 'max:1000'],
-            'amount' => ['required', 'numeric', 'min:1000'],
-            'shipping_address' => ['required', 'string', 'max:500'],
-            'seller_notes' => ['nullable', 'string', 'max:500'],
-        ]);
+        $transaction = $this->escrowService->create($request->validated());
 
-        $transaction = Transaction::create([
-            ...$validated,
-            'seller_id' => Auth::id(),
-            'status' => 'pending',
-        ]);
+        // Auto-publish si pas brouillon (comportement actuel)
+        $this->escrowService->publish($transaction);
 
         ActivityLog::log('transaction_created', $transaction, Auth::user());
 
         return redirect()->route('transactions.show', $transaction)
-            ->with('success', 'Transaction creee. Partagez ce lien avec l\'acheteur.');
+            ->with('success', 'Transaction creee. Partagez ce lien avec l'acheteur.');
     }
 
     public function show(Transaction $transaction)
     {
         $this->authorizeAccess($transaction);
+        $transaction->load(['seller', 'buyer', 'payment', 'escrow', 'dispute', 'logs']);
+
         return view('transactions.show', compact('transaction'));
     }
 
@@ -60,10 +62,11 @@ class TransactionController extends Controller
             abort(403);
         }
 
-        if (!$transaction->isPending()) {
+        if (!$transaction->isPendingPayment()) {
             return back()->with('error', 'Cette transaction ne peut plus etre payee.');
         }
 
+        // Attribuer l'acheteur et passer au paiement
         $transaction->update(['buyer_id' => Auth::id()]);
 
         return redirect()->route('payment.show', $transaction);
@@ -74,24 +77,17 @@ class TransactionController extends Controller
         $this->authorizeAccess($transaction);
 
         if (!$transaction->isDelivered()) {
-            return back()->with('error', 'La livraison n\'est pas confirmee.');
+            return back()->with('error', 'La livraison n'est pas confirmee.');
         }
 
         if ($transaction->buyer_id !== Auth::id()) {
-            abort(403, 'Seul l\'acheteur peut confirmer la reception.');
+            abort(403, 'Seul l'acheteur peut confirmer la reception.');
         }
 
-        $transaction->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
+        $success = $this->escrowService->complete($transaction);
 
-        // Liberer fonds escrow
-        if ($transaction->escrow) {
-            $transaction->escrow->update([
-                'status' => 'released',
-                'released_at' => now(),
-            ]);
+        if (!$success) {
+            return back()->with('error', 'Impossible de finaliser la transaction.');
         }
 
         // Notifier vendeur
@@ -120,10 +116,11 @@ class TransactionController extends Controller
             return back()->with('error', 'Cette transaction ne peut plus etre annulee.');
         }
 
-        $transaction->update([
-            'status' => 'cancelled',
-            'cancelled_at' => now(),
-        ]);
+        $success = $this->escrowService->cancel($transaction);
+
+        if (!$success) {
+            return back()->with('error', 'Impossible d'annuler la transaction.');
+        }
 
         ActivityLog::log('transaction_cancelled', $transaction, Auth::user());
 
@@ -131,10 +128,82 @@ class TransactionController extends Controller
             ->with('success', 'Transaction annulee.');
     }
 
-    private function authorizeAccess(Transaction $transaction)
+    /**
+     * Marquer comme expedie (vendeur)
+     */
+    public function ship(Request $request, Transaction $transaction)
+    {
+        $this->authorizeAccess($transaction);
+
+        if ($transaction->seller_id !== Auth::id()) {
+            abort(403, 'Seul le vendeur peut marquer comme expedie.');
+        }
+
+        $trackingNumber = $request->input('tracking_number');
+
+        $success = $this->escrowService->ship($transaction, $trackingNumber);
+
+        if (!$success) {
+            return back()->with('error', 'Impossible de marquer comme expedie.');
+        }
+
+        // Notifier acheteur
+        if ($transaction->buyer_id) {
+            Notification::create([
+                'user_id' => $transaction->buyer_id,
+                'type' => 'transaction_shipped',
+                'title' => 'Commande expediee',
+                'message' => "Votre commande {$transaction->product_name} a ete expediee.",
+                'link' => route('transactions.show', $transaction),
+            ]);
+        }
+
+        ActivityLog::log('transaction_shipped', $transaction, Auth::user());
+
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', 'Commande marquee comme expediee.');
+    }
+
+    /**
+     * Marquer comme livre (vendeur ou systeme)
+     */
+    public function markDelivered(Transaction $transaction)
+    {
+        $this->authorizeAccess($transaction);
+
+        if ($transaction->seller_id !== Auth::id() && !Auth::user()->isAdmin()) {
+            abort(403);
+        }
+
+        $success = $this->escrowService->deliver($transaction);
+
+        if (!$success) {
+            return back()->with('error', 'Impossible de marquer comme livre.');
+        }
+
+        // Notifier acheteur
+        if ($transaction->buyer_id) {
+            Notification::create([
+                'user_id' => $transaction->buyer_id,
+                'type' => 'transaction_delivered',
+                'title' => 'Commande livree',
+                'message' => "Votre commande {$transaction->product_name} est livree. Confirmez la reception dans les 48h.",
+                'link' => route('transactions.show', $transaction),
+            ]);
+        }
+
+        ActivityLog::log('transaction_delivered', $transaction, Auth::user());
+
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', 'Commande marquee comme livree. L'acheteur a 48h pour confirmer.');
+    }
+
+    private function authorizeAccess(Transaction $transaction): void
     {
         $user = Auth::user();
-        if ($transaction->seller_id !== $user->id && $transaction->buyer_id !== $user->id && !$user->isAdmin()) {
+        if ($transaction->seller_id !== $user->id
+            && $transaction->buyer_id !== $user->id
+            && !$user->isAdmin()) {
             abort(403);
         }
     }

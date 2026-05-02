@@ -11,85 +11,93 @@ use Illuminate\Support\Facades\Auth;
 
 class DisputeController extends Controller
 {
-    protected DisputeService $disputeService;
+    public function __construct(
+        private DisputeService $disputeService
+    ) {}
 
-    public function __construct(DisputeService $disputeService)
-    {
-        $this->disputeService = $disputeService;
-    }
-
-    /**
-     * Liste les litiges de l'utilisateur.
-     */
     public function index()
     {
         $user = Auth::user();
 
-        $disputes = Dispute::whereHas('transaction', function ($query) use ($user) {
-            $query->where('buyer_id', $user->id)
-                  ->orWhere('seller_id', $user->id);
+        $disputes = Dispute::whereHas('transaction', function ($q) use ($user) {
+            $q->where('seller_id', $user->id)
+              ->orWhere('buyer_id', $user->id);
         })
-        ->with(['transaction'])
+        ->with(['transaction', 'initiator'])
         ->latest()
-        ->paginate(10);
+        ->paginate(15);
 
         return view('disputes.index', compact('disputes'));
     }
 
-    /**
-     * Affiche le formulaire de creation de litige.
-     */
     public function create(Transaction $transaction)
     {
-        $this->authorize('createDispute', $transaction);
+        $this->authorize('view', $transaction);
+
+        if (!$transaction->canOpenDispute()) {
+            return back()->with('error', 'Vous ne pouvez pas ouvrir de litige sur cette transaction.');
+        }
+
+        if ($transaction->dispute) {
+            return redirect()->route('disputes.show', $transaction->dispute)
+                ->with('info', 'Un litige existe deja pour cette transaction.');
+        }
 
         return view('disputes.create', compact('transaction'));
     }
 
-    /**
-     * Cree un nouveau litige.
-     */
     public function store(CreateDisputeRequest $request)
     {
-        $transaction = Transaction::findOrFail($request->transaction_id);
+        $transaction = Transaction::findOrFail($request->input('transaction_id'));
 
-        $this->authorize('createDispute', $transaction);
+        $this->authorize('view', $transaction);
 
-        $dispute = $this->disputeService->createDispute(
+        if (!$transaction->canOpenDispute()) {
+            return back()->with('error', 'Cette transaction ne peut plus faire l'objet d'un litige.');
+        }
+
+        $dispute = $this->disputeService->open(
             $transaction,
-            Auth::user(),
-            $request->validated()
+            $request->input('reason'),
+            $request->input('description')
         );
 
         return redirect()->route('disputes.show', $dispute)
-            ->with('success', 'Votre litige a ete ouvert. Un mediateur va examiner votre cas.');
+            ->with('success', 'Litige ouvert avec succes.');
     }
 
-    /**
-     * Affiche un litige.
-     */
     public function show(Dispute $dispute)
     {
-        $this->authorize('view', $dispute);
+        $this->authorizeAccess($dispute);
 
         $dispute->load(['transaction', 'messages.user', 'initiator']);
 
         return view('disputes.show', compact('dispute'));
     }
 
-    /**
-     * Repondre a un litige.
-     */
     public function reply(Request $request, Dispute $dispute)
     {
-        $this->authorize('reply', $dispute);
+        $this->authorizeAccess($dispute);
 
-        $request->validate([
-            'message' => ['required', 'string', 'max:3000'],
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'min:10', 'max:5000'],
         ]);
 
-        $this->disputeService->addMessage($dispute, Auth::user(), $request->message);
+        $this->disputeService->reply($dispute, $validated['message']);
 
-        return back()->with('success', 'Votre message a ete ajoute.');
+        return redirect()->route('disputes.show', $dispute)
+            ->with('success', 'Reponse envoyee.');
+    }
+
+    private function authorizeAccess(Dispute $dispute): void
+    {
+        $user = Auth::user();
+        $transaction = $dispute->transaction;
+
+        if ($transaction->seller_id !== $user->id
+            && $transaction->buyer_id !== $user->id
+            && !$user->isAdmin()) {
+            abort(403, 'Acces non autorise.');
+        }
     }
 }

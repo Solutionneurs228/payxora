@@ -11,9 +11,9 @@ enum KycStatus: string
     public function label(): string
     {
         return match($this) {
-            self::PENDING => 'En attente de validation',
-            self::APPROVED => 'Vérifié',
-            self::REJECTED => 'Rejeté',
+            self::PENDING => 'En attente',
+            self::APPROVED => 'Approuve',
+            self::REJECTED => 'Refuse',
         };
     }
 

@@ -1,42 +1,41 @@
 @extends('layouts.app')
 
-@section('title', 'Paiement reussi')
+@section('title', 'Paiement confirme — PayXora')
 
 @section('content')
-<section class="min-h-screen flex items-center justify-center py-12 px-4 bg-slate-50">
-    <div class="max-w-md w-full text-center">
-        <div class="w-24 h-24 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
-            <svg class="w-12 h-12 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+<div class="max-w-xl mx-auto px-4 py-16 text-center">
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
         </div>
-        <h1 class="text-3xl font-bold text-slate-900 mb-3">Paiement reussi !</h1>
-        <p class="text-slate-500 mb-2">Votre paiement a ete effectue avec succes.</p>
-        <p class="text-slate-500 mb-8">Les fonds sont maintenant bloques en securite. Le vendeur va expedier votre commande.</p>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Paiement confirme !</h1>
+        <p class="text-gray-500 mb-6">Votre paiement de {{ number_format($transaction->amount, 0, ',', ' ') }} FCFA a ete effectue avec succes. Les fonds sont maintenant en sequestre.</p>
 
-        <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 mb-8 text-left">
-            <div class="flex justify-between mb-3">
-                <span class="text-slate-500">Transaction</span>
-                <span class="font-mono text-slate-700">{{ $transaction->reference }}</span>
+        <div class="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+            <div class="flex justify-between text-sm mb-2">
+                <span class="text-gray-500">Reference</span>
+                <span class="font-mono font-medium">{{ $transaction->reference }}</span>
             </div>
-            <div class="flex justify-between mb-3">
-                <span class="text-slate-500">Montant</span>
-                <span class="font-bold text-slate-900">{{ number_format($transaction->amount, 0, ',', ' ') }} FCFA</span>
+            <div class="flex justify-between text-sm mb-2">
+                <span class="text-gray-500">Produit</span>
+                <span class="font-medium">{{ $transaction->product_name }}</span>
             </div>
-            <div class="flex justify-between pt-3 border-t border-slate-100">
-                <span class="text-slate-500">Statut</span>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Paye - En sequestre</span>
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Statut</span>
+                <span class="font-medium text-indigo-600">En sequestre</span>
             </div>
         </div>
 
         <div class="space-y-3">
-            <a href="{{ route('transactions.show', $transaction) }}" class="block w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg transition-all">
-                Voir ma transaction
+            <a href="{{ route('transactions.show', $transaction) }}" class="block w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition">
+                Voir la transaction
             </a>
-            <a href="{{ route('dashboard') }}" class="block w-full py-3.5 bg-white border-2 border-slate-200 hover:border-emerald-300 text-slate-700 font-semibold rounded-xl transition-all">
+            <a href="{{ route('dashboard') }}" class="block w-full text-gray-500 hover:text-gray-700 py-3 transition">
                 Retour au tableau de bord
             </a>
         </div>
     </div>
-</section>
+</div>
 @endsection

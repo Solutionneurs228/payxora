@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -11,37 +12,33 @@ class ProfileController extends Controller
 {
     public function edit()
     {
-        return view('dashboard.profile');
+        $user = Auth::user();
+        $user->load('kycProfile');
+
+        return view('profile.edit', compact('user'));
     }
 
-    public function update(Request $request)
+    public function update(ProfileUpdateRequest $request)
     {
         $user = Auth::user();
+        $user->update($request->validated());
 
-        $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'regex:/^\+228[0-9]{8}$/', "unique:users,phone,{$user->id}"],
-            'address' => ['nullable', 'string', 'max:255'],
-            'city' => ['nullable', 'string', 'max:100'],
-        ]);
-
-        $user->update($validated);
-
-        return back()->with('success', 'Profil mis a jour.');
+        return redirect()->route('profile.edit')
+            ->with('success', 'Profil mis a jour avec succes.');
     }
 
     public function updatePassword(Request $request)
     {
         $validated = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         Auth::user()->update([
             'password' => Hash::make($validated['password']),
         ]);
 
-        return back()->with('success', 'Mot de passe modifie.');
+        return redirect()->route('profile.edit')
+            ->with('success', 'Mot de passe mis a jour.');
     }
 }

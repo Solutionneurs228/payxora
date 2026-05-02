@@ -14,27 +14,20 @@ class CreateTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255', 'min:3'],
-            'description' => ['required', 'string', 'max:2000'],
-            'amount' => ['required', 'numeric', 'min:100', 'max:10000000'],
-            'buyer_email' => ['required', 'email', 'max:255'],
-            'delivery_conditions' => ['required', 'string', 'max:1000'],
-            'delivery_deadline_days' => ['required', 'integer', 'min:1', 'max:30'],
+            'product_name' => ['required', 'string', 'min:3', 'max:255'],
+            'product_description' => ['nullable', 'string', 'max:2000'],
+            'amount' => ['required', 'numeric', 'min:' . config('payxora.min_transaction_amount', 1000), 'max:' . config('payxora.max_transaction_amount', 10000000)],
+            'currency' => ['required', 'in:XOF'],
+            'shipping_address' => ['required', 'string', 'max:500'],
+            'seller_notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'title.required' => 'Le titre de la transaction est obligatoire.',
-            'title.min' => 'Le titre doit contenir au moins 3 caracteres.',
-            'description.required' => 'La description est obligatoire.',
-            'amount.required' => 'Le montant est obligatoire.',
-            'amount.min' => 'Le montant minimum est de 100 FCFA.',
-            'amount.max' => 'Le montant maximum est de 10 000 000 FCFA.',
-            'buyer_email.required' => 'L\'email de l\'acheteur est obligatoire.',
-            'delivery_conditions.required' => 'Les conditions de livraison sont obligatoires.',
-            'delivery_deadline_days.required' => 'Le delai de livraison est obligatoire.',
+            'amount.min' => 'Le montant minimum est de ' . number_format(config('payxora.min_transaction_amount', 1000), 0, ',', ' ') . ' FCFA.',
+            'amount.max' => 'Le montant maximum est de ' . number_format(config('payxora.max_transaction_amount', 10000000), 0, ',', ' ') . ' FCFA.',
         ];
     }
 }

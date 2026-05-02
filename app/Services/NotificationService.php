@@ -3,159 +3,124 @@
 namespace App\Services;
 
 use App\Models\Notification;
+use App\Models\Transaction;
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
 
 class NotificationService
 {
-    protected BrevoService $brevoService;
-
-    public function __construct(BrevoService $brevoService)
+    /**
+     * Notifier qu'un paiement a ete recu
+     */
+    public function notifyPaymentReceived(Transaction $transaction): void
     {
-        $this->brevoService = $brevoService;
+        // Notifier le vendeur
+        Notification::create([
+            'user_id' => $transaction->seller_id,
+            'type' => 'payment_received',
+            'title' => 'Paiement recu',
+            'message' => "Le paiement pour {$transaction->product_name} a ete recu et est en sequestre.",
+            'link' => route('transactions.show', $transaction),
+        ]);
+
+        // Notifier l'acheteur
+        Notification::create([
+            'user_id' => $transaction->buyer_id,
+            'type' => 'payment_confirmed',
+            'title' => 'Paiement confirme',
+            'message' => "Votre paiement pour {$transaction->product_name} est confirme. Le vendeur va expedier.",
+            'link' => route('transactions.show', $transaction),
+        ]);
+
+        // Email Brevo
+        try {
+            BrevoService::sendPaymentConfirmed($transaction->seller, $transaction);
+            BrevoService::sendPaymentReceipt($transaction->buyer, $transaction);
+        } catch (\Exception $e) {
+            // Log mais ne pas bloquer
+            \Illuminate\Support\Facades\Log::error('Erreur envoi email Brevo', [
+                'error' => $e->getMessage(),
+                'transaction_id' => $transaction->id,
+            ]);
+        }
     }
 
     /**
-     * Cree une notification interne.
+     * Notifier qu'un litige a ete ouvert
      */
-    public function create(User $user, string $title, string $message, ?string $actionUrl = null): Notification
+    public function notifyDisputeOpened(Transaction $transaction, User $initiator): void
     {
-        return Notification::create([
-            'user_id' => $user->id,
-            'title' => $title,
-            'message' => $message,
-            'action_url' => $actionUrl,
-            'is_read' => false,
+        $otherPartyId = $initiator->id === $transaction->seller_id
+            ? $transaction->buyer_id
+            : $transaction->seller_id;
+
+        Notification::create([
+            'user_id' => $otherPartyId,
+            'type' => 'dispute_opened',
+            'title' => 'Litige ouvert',
+            'message' => "Un litige a ete ouvert sur la transaction {$transaction->product_name}.",
+            'link' => route('disputes.show', $transaction->dispute),
         ]);
     }
 
     /**
-     * Notifie tous les admins.
+     * Notifier resolution d'un litige
      */
-    public function notifyAdmins(string $title, string $message, ?string $actionUrl = null): void
+    public function notifyDisputeResolved(Transaction $transaction, string $resolution): void
     {
-        $admins = User::where('role', 'admin')->get();
+        Notification::create([
+            'user_id' => $transaction->seller_id,
+            'type' => 'dispute_resolved',
+            'title' => 'Litige resolu',
+            'message' => "Le litige sur {$transaction->product_name} a ete resolu : {$resolution}",
+            'link' => route('transactions.show', $transaction),
+        ]);
 
-        foreach ($admins as $admin) {
-            $this->create($admin, $title, $message, $actionUrl);
-        }
+        Notification::create([
+            'user_id' => $transaction->buyer_id,
+            'type' => 'dispute_resolved',
+            'title' => 'Litige resolu',
+            'message' => "Le litige sur {$transaction->product_name} a ete resolu : {$resolution}",
+            'link' => route('transactions.show', $transaction),
+        ]);
     }
 
     /**
-     * Envoie un email de bienvenue.
+     * Marquer une notification comme lue
      */
-    public function sendWelcomeEmail(User $user): void
+    public function markAsRead(int $notificationId, int $userId): bool
     {
-        try {
-            $this->brevoService->sendEmail(
-                $user->email,
-                $user->name,
-                'Bienvenue sur PayXora',
-                $this->getWelcomeTemplate($user)
-            );
-        } catch (\Exception $e) {
-            Log::error('Erreur email de bienvenue: ' . $e->getMessage());
+        $notification = Notification::where('id', $notificationId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$notification) {
+            return false;
         }
+
+        $notification->update(['read_at' => now()]);
+        return true;
     }
 
     /**
-     * Envoie un email de verification KYC approuvee.
+     * Marquer toutes les notifications comme lues
      */
-    public function sendKycApprovedEmail(User $user): void
+    public function markAllAsRead(int $userId): int
     {
-        try {
-            $this->brevoService->sendEmail(
-                $user->email,
-                $user->name,
-                'Votre compte PayXora est verifie',
-                $this->getKycApprovedTemplate($user)
-            );
-        } catch (\Exception $e) {
-            Log::error('Erreur email KYC approuve: ' . $e->getMessage());
-        }
+        return Notification::where('user_id', $userId)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
     }
 
     /**
-     * Envoie un email de KYC rejetee.
+     * Obtenir les notifications non lues
      */
-    public function sendKycRejectedEmail(User $user, string $reason): void
+    public function getUnread(int $userId, int $limit = 10): array
     {
-        try {
-            $this->brevoService->sendEmail(
-                $user->email,
-                $user->name,
-                'Verification KYC - Action requise',
-                $this->getKycRejectedTemplate($user, $reason)
-            );
-        } catch (\Exception $e) {
-            Log::error('Erreur email KYC rejete: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Envoie un email de transaction completee.
-     */
-    public function sendTransactionCompletedEmail(User $user, $transaction): void
-    {
-        try {
-            $this->brevoService->sendEmail(
-                $user->email,
-                $user->name,
-                'Transaction terminee - ' . $transaction->title,
-                $this->getTransactionCompletedTemplate($user, $transaction)
-            );
-        } catch (\Exception $e) {
-            Log::error('Erreur email transaction: ' . $e->getMessage());
-        }
-    }
-
-    // Templates HTML
-    private function getWelcomeTemplate(User $user): string
-    {
-        return "
-            <h1>Bienvenue sur PayXora, {$user->name} !</h1>
-            <p>Merci de vous etre inscrit sur PayXora, la plateforme de paiement securise par escrow au Togo.</p>
-            <p>Pour commencer a utiliser nos services, veuillez completer votre verification d'identite (KYC).</p>
-            <a href='" . route('kyc.show') . "' style='display:inline-block;padding:12px 24px;background:#059669;color:white;text-decoration:none;border-radius:6px;'>Verifier mon identite</a>
-            <p>Si vous avez des questions, contactez-nous a contact@payxora.tg</p>
-        ";
-    }
-
-    private function getKycApprovedTemplate(User $user): string
-    {
-        return "
-            <h1>Felicitations {$user->name} !</h1>
-            <p>Votre verification d'identite a ete approuvee. Votre compte PayXora est maintenant entierement actif.</p>
-            <p>Vous pouvez maintenant :</p>
-            <ul>
-                <li>Creer des transactions</li>
-                <li>Effectuer des paiements securises</li>
-                <li>Utiliser le systeme d'escrow</li>
-            </ul>
-            <a href='" . route('dashboard') . "' style='display:inline-block;padding:12px 24px;background:#059669;color:white;text-decoration:none;border-radius:6px;'>Acceder au tableau de bord</a>
-        ";
-    }
-
-    private function getKycRejectedTemplate(User $user, string $reason): string
-    {
-        return "
-            <h1>Verification KYC - Action requise</h1>
-            <p>Bonjour {$user->name},</p>
-            <p>Votre verification d'identite n'a pas pu etre approuvee pour la raison suivante :</p>
-            <blockquote style='border-left:4px solid #ef4444;padding-left:12px;color:#dc2626;'>{$reason}</blockquote>
-            <p>Veuillez soumettre de nouveaux documents en suivant le lien ci-dessous :</p>
-            <a href='" . route('kyc.show') . "' style='display:inline-block;padding:12px 24px;background:#059669;color:white;text-decoration:none;border-radius:6px;'>Reessayer la verification</a>
-        ";
-    }
-
-    private function getTransactionCompletedTemplate(User $user, $transaction): string
-    {
-        $amount = number_format($transaction->amount, 0, ',', ' ');
-        return "
-            <h1>Transaction terminee</h1>
-            <p>Bonjour {$user->name},</p>
-            <p>La transaction <strong>{$transaction->title}</strong> d'un montant de <strong>{$amount} FCFA</strong> a ete terminee avec succes.</p>
-            <a href='" . route('transactions.show', $transaction) . "' style='display:inline-block;padding:12px 24px;background:#059669;color:white;text-decoration:none;border-radius:6px;'>Voir la transaction</a>
-        ";
+        return Notification::where('user_id', $userId)
+            ->whereNull('read_at')
+            ->latest()
+            ->limit($limit)
+            ->get()
+            ->toArray();
     }
 }

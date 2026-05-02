@@ -1,126 +1,76 @@
 @extends('layouts.guest')
 
-@section('title', 'Inscription - PayXora')
+@section('title', 'Inscription — PayXora')
 
 @section('content')
-<div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-50">
-    <div class="w-full sm:max-w-lg px-6 py-8 bg-white shadow-md overflow-hidden sm:rounded-lg">
-        <!-- Logo -->
-        <div class="text-center mb-8">
-            <a href="{{ route('home') }}" class="inline-flex items-center space-x-2">
-                <svg class="h-10 w-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
-                <span class="text-2xl font-bold text-gray-900">PayXora</span>
-            </a>
-            <p class="mt-2 text-sm text-gray-600">Creez votre compte securise</p>
-        </div>
-
-        <form method="POST" action="{{ route('register.store') }}" class="space-y-5">
-            @csrf
-
-            <!-- Name -->
-            <div>
-                <label for="name" class="block text-sm font-medium text-gray-700">Nom complet</label>
-                <div class="mt-1">
-                    <input id="name" name="name" type="text" value="{{ old('name') }}" required autofocus
-                           class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
-                           @error('name') border-red-300 @enderror"
-                           placeholder="Jean Dupont">
-                </div>
-                @error('name')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <!-- Email -->
-            <div>
-                <label for="email" class="block text-sm font-medium text-gray-700">Adresse email</label>
-                <div class="mt-1">
-                    <input id="email" name="email" type="email" value="{{ old('email') }}" required
-                           class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
-                           @error('email') border-red-300 @enderror"
-                           placeholder="jean@exemple.tg">
-                </div>
-                @error('email')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <!-- Phone -->
-            <div>
-                <label for="phone" class="block text-sm font-medium text-gray-700">Telephone</label>
-                <div class="mt-1">
-                    <input id="phone" name="phone" type="tel" value="{{ old('phone') }}" required
-                           class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
-                           @error('phone') border-red-300 @enderror"
-                           placeholder="+228 90 12 34 56">
-                </div>
-                @error('phone')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <!-- Password -->
-            <div>
-                <label for="password" class="block text-sm font-medium text-gray-700">Mot de passe</label>
-                <div class="mt-1">
-                    <input id="password" name="password" type="password" required
-                           class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
-                           @error('password') border-red-300 @enderror"
-                           placeholder="Min. 8 caracteres">
-                </div>
-                @error('password')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <!-- Password Confirmation -->
-            <div>
-                <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Confirmer le mot de passe</label>
-                <div class="mt-1">
-                    <input id="password_confirmation" name="password_confirmation" type="password" required
-                           class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                           placeholder="Repetez votre mot de passe">
-                </div>
-            </div>
-
-            <!-- Terms -->
-            <div class="flex items-start">
-                <div class="flex items-center h-5">
-                    <input id="terms" name="terms" type="checkbox" required
-                           class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded
-                           @error('terms') border-red-300 @enderror">
-                </div>
-                <div class="ml-3 text-sm">
-                    <label for="terms" class="font-medium text-gray-700">
-                        J'accepte les <a href="#" class="text-indigo-600 hover:text-indigo-500">conditions d'utilisation</a>
-                        et la <a href="#" class="text-indigo-600 hover:text-indigo-500">politique de confidentialite</a>
-                    </label>
-                    @error('terms')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <!-- Submit -->
-            <div>
-                <button type="submit"
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                    Creer mon compte
-                </button>
-            </div>
-        </form>
-
-        <!-- Login link -->
-        <div class="mt-6 text-center">
-            <p class="text-sm text-gray-600">
-                Deja un compte ?
-                <a href="{{ route('login') }}" class="font-medium text-indigo-600 hover:text-indigo-500">
-                    Connectez-vous
-                </a>
-            </p>
-        </div>
+    <div class="text-center mb-8">
+        <h1 class="text-2xl font-bold text-gray-900">Creer un compte</h1>
+        <p class="text-gray-500 mt-1">Rejoignez PayXora en toute securite</p>
     </div>
-</div>
+
+    <form method="POST" action="{{ route('register.store') }}" class="space-y-4">
+        @csrf
+
+        <div>
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nom complet</label>
+            <input type="text" name="name" id="name" value="{{ old('name') }}" required
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition @error('name') border-red-500 @enderror">
+            @error('name')
+                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Adresse email</label>
+            <input type="email" name="email" id="email" value="{{ old('email') }}" required
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition @error('email') border-red-500 @enderror">
+            @error('email')
+                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Telephone</label>
+            <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" required placeholder="90000000"
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition @error('phone') border-red-500 @enderror">
+            @error('phone')
+                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Je suis</label>
+            <select name="role" id="role" required
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                <option value="buyer" {{ old('role') == 'buyer' ? 'selected' : '' }}>Acheteur</option>
+                <option value="seller" {{ old('role') == 'seller' ? 'selected' : '' }}>Vendeur</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+            <input type="password" name="password" id="password" required
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition @error('password') border-red-500 @enderror">
+            @error('password')
+                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
+            <input type="password" name="password_confirmation" id="password_confirmation" required
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+            Creer mon compte
+        </button>
+    </form>
+
+    <div class="mt-6 text-center">
+        <p class="text-sm text-gray-500">
+            Deja un compte ?
+            <a href="{{ route('login') }}" class="text-indigo-600 font-medium hover:text-indigo-800 transition">Se connecter</a>
+        </p>
+    </div>
 @endsection

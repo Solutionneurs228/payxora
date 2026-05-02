@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\KycStatus;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class KycMiddleware
@@ -14,7 +14,7 @@ class KycMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $user = Auth::user();
+        $user = $request->user();
 
         if (!$user) {
             return redirect()->route('login');
@@ -25,19 +25,24 @@ class KycMiddleware
             return $next($request);
         }
 
-        // Check KYC status
-        $kyc = $user->kycProfile;
+        // Verifier KYC
+        $kycProfile = $user->kycProfile;
 
-        if (!$kyc || $kyc->status !== 'approved') {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'error' => 'Verification d\'identite requise.',
-                    'redirect' => route('kyc.show'),
-                ], 403);
+        if (!$kycProfile) {
+            return redirect()->route('kyc.show')
+                ->with('warning', 'Veuillez completer votre verification d'identite (KYC) pour acceder a cette page.');
+        }
+
+        if ($kycProfile->status !== KycStatus::APPROVED) {
+            if ($kycProfile->status === KycStatus::PENDING) {
+                return redirect()->route('kyc.verification')
+                    ->with('info', 'Votre verification KYC est en cours de traitement.');
             }
 
-            return redirect()->route('kyc.show')
-                ->with('info', 'Veuillez completer votre verification d\'identite pour acceder a cette page.');
+            if ($kycProfile->status === KycStatus::REJECTED) {
+                return redirect()->route('kyc.show')
+                    ->with('error', 'Votre verification KYC a ete refusee. Veuillez soumettre a nouveau vos documents.');
+            }
         }
 
         return $next($request);

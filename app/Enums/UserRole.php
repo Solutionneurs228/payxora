@@ -4,26 +4,16 @@ namespace App\Enums;
 
 enum UserRole: string
 {
-    case BUYER = 'buyer';
-    case SELLER = 'seller';
     case ADMIN = 'admin';
+    case SELLER = 'seller';
+    case BUYER = 'buyer';
 
     public function label(): string
     {
         return match($this) {
-            self::BUYER => 'Acheteur',
-            self::SELLER => 'Vendeur',
             self::ADMIN => 'Administrateur',
+            self::SELLER => 'Vendeur',
+            self::BUYER => 'Acheteur',
         };
-    }
-
-    public function canSell(): bool
-    {
-        return in_array($this, [self::SELLER, self::ADMIN]);
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this === self::ADMIN;
     }
 }

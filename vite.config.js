@@ -6,7 +6,9 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
+                'resources/css/payxora.css',
                 'resources/js/app.js',
+                'resources/js/payxora.js',
             ],
             refresh: true,
         }),

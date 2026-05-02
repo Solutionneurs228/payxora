@@ -1,0 +1,40 @@
+# FICHIERS À SUPPRIMER DU PROJET
+# Copier ce fichier à la racine du projet comme référence, puis supprimer les fichiers listés ci-dessous
+
+## Doublons KycController
+- app/Http/Controllers/Auth/KycController (2).php
+- app/Http/Controllers/KycController.php
+  => Garder UNIQUEMENT : app/Http/Controllers/Auth/KycController.php
+
+## Routes orphelines
+- routes/auth.php
+- routes/web_email_verification.php
+  => Routes intégrées dans routes/web.php
+
+## Fichiers de backup / instructions
+- resources/views/admin/dashboard.blade copy.php
+- config/filesystems_addition.txt
+- _ENV_ADDITIONS.txt
+- _INSTRUCTIONS_MIDDLEWARE.txt
+- _PHASE2_INSTRUCTIONS.md
+- _ASSETS_INSTRUCTIONS.md
+
+## Interface MobileMoney en double
+- app/Services/MobileMoneyInterface.php
+  => Garder UNIQUEMENT : app/Services/Contracts/MobileMoneyInterface.php
+
+## Page welcome par défaut (optionnel, si non utilisée)
+- resources/views/welcome.blade.php
+  => Remplacer par une redirection vers home
+
+## Controllers Breeze doublons (si custom utilisés)
+- app/Http/Controllers/Auth/AuthenticatedSessionController.php
+- app/Http/Controllers/Auth/ConfirmablePasswordController.php
+- app/Http/Controllers/Auth/EmailVerificationNotificationController.php
+- app/Http/Controllers/Auth/EmailVerificationPromptController.php
+- app/Http/Controllers/Auth/NewPasswordController.php
+- app/Http/Controllers/Auth/PasswordController.php
+- app/Http/Controllers/Auth/PasswordResetLinkController.php
+- app/Http/Controllers/Auth/RegisteredUserController.php
+- app/Http/Controllers/Auth/VerifyEmailController.php
+  => À vérifier : si RegisterController/LoginController custom sont utilisés, supprimer ceux-ci

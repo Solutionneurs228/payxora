@@ -2,27 +2,30 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\TransactionStatus;
 use App\Models\Transaction;
 use App\Services\EscrowService;
 use Illuminate\Console\Command;
 
 class ReleaseEscrowFunds extends Command
 {
-    protected $signature = 'payxora:release-escrow';
-    protected $description = 'Libere les fonds des transactions livrees depuis plus de 48h sans confirmation';
+    protected $signature = 'escrow:release-auto';
+    protected $description = 'Libere automatiquement les fonds si delai de confirmation depasse';
 
-    public function handle(EscrowService $escrowService): void
+    public function handle(EscrowService $escrowService): int
     {
-        $toRelease = Transaction::where('status', 'in_delivery')
-            ->where('delivered_at', '<', now()->subHours(48))
+        $toRelease = Transaction::where('status', TransactionStatus::DELIVERED)
+            ->where('confirmation_deadline', '<', now())
             ->get();
 
         $count = 0;
         foreach ($toRelease as $transaction) {
-            $escrowService->releaseFunds($transaction);
+            $escrowService->complete($transaction);
             $count++;
+            $this->info("Transaction {$transaction->reference} auto-completee");
         }
 
-        $this->info("{$count} fonds liberes automatiquement.");
+        $this->info("{$count} transaction(s) auto-completee(s)");
+        return 0;
     }
 }

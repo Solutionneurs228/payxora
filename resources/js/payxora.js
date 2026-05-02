@@ -1,208 +1,183 @@
-/**
- * PayXora - Custom JavaScript
- * Animations, compteurs, scroll reveal
- */
+// PayXora Custom JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
-
-    // ============================================================
-    // 1. Scroll Reveal
-    // ============================================================
-    const revealElements = document.querySelectorAll('.reveal');
-
-    const revealObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('active');
-                revealObserver.unobserve(entry.target);
-            }
-        });
-    }, {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    });
-
-    revealElements.forEach(el => revealObserver.observe(el));
-
-    // ============================================================
-    // 2. Animated Counters
-    // ============================================================
-    const counters = document.querySelectorAll('.stat-counter');
-
-    const counterObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const target = parseInt(entry.target.textContent) || 0;
-                animateCounter(entry.target, target, 1500);
-                counterObserver.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.5 });
-
-    counters.forEach(counter => counterObserver.observe(counter));
-
-    function animateCounter(element, target, duration) {
-        const start = 0;
-        const startTime = performance.now();
-
-        function update(currentTime) {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-
-            // Ease out quad
-            const easeProgress = 1 - (1 - progress) * (1 - progress);
-            const current = Math.floor(start + (target - start) * easeProgress);
-
-            element.textContent = current.toLocaleString('fr-FR');
-
-            if (progress < 1) {
-                requestAnimationFrame(update);
-            } else {
-                element.textContent = target.toLocaleString('fr-FR');
-            }
-        }
-
-        requestAnimationFrame(update);
-    }
-
-    // ============================================================
-    // 3. Mobile Menu Toggle
-    // ============================================================
-    const mobileMenuBtn = document.querySelector('[data-mobile-menu-btn]');
-    const mobileMenu = document.querySelector('[data-mobile-menu]');
-
-    if (mobileMenuBtn && mobileMenu) {
-        mobileMenuBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-        });
-    }
-
-    // ============================================================
-    // 4. Notification Dropdown
-    // ============================================================
-    const notifBtn = document.querySelector('[data-notif-btn]');
-    const notifDropdown = document.querySelector('[data-notif-dropdown]');
-
-    if (notifBtn && notifDropdown) {
-        notifBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            notifDropdown.classList.toggle('hidden');
-        });
-
-        document.addEventListener('click', () => {
-            notifDropdown.classList.add('hidden');
-        });
-    }
-
-    // ============================================================
-    // 5. Smooth Anchor Links
-    // ============================================================
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function(e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        });
-    });
-
-    // ============================================================
-    // 6. Flash Message Auto Dismiss
-    // ============================================================
-    const flashMessages = document.querySelectorAll('[data-flash-message]');
-
+    // Auto-hide flash messages
+    const flashMessages = document.querySelectorAll('[data-flash-auto-hide]');
     flashMessages.forEach(msg => {
         setTimeout(() => {
             msg.style.opacity = '0';
             msg.style.transform = 'translateY(-10px)';
-            msg.style.transition = 'all 0.3s ease';
             setTimeout(() => msg.remove(), 300);
         }, 5000);
     });
 
-    // ============================================================
-    // 7. Form Validation Visual Feedback
-    // ============================================================
-    const forms = document.querySelectorAll('form[data-validate]');
+    // File upload preview
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const displayId = this.dataset.display;
+            if (displayId) {
+                const display = document.getElementById(displayId);
+                if (display && this.files[0]) {
+                    display.textContent = 'Fichier selectionne : ' + this.files[0].name;
+                    display.classList.add('text-indigo-600');
+                }
+            }
+        });
+    });
 
-    forms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            const requiredFields = form.querySelectorAll('[required]');
-            let valid = true;
-
-            requiredFields.forEach(field => {
-                if (!field.value.trim()) {
-                    valid = false;
-                    field.classList.add('border-red-500', 'ring-red-500');
-
-                    // Shake animation
-                    field.style.animation = 'shake 0.5s ease';
-                    setTimeout(() => {
-                        field.style.animation = '';
-                    }, 500);
-                } else {
-                    field.classList.remove('border-red-500', 'ring-red-500');
+    // Mobile money provider selection
+    const providerRadios = document.querySelectorAll('input[name="provider"]');
+    providerRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            providerRadios.forEach(r => {
+                const card = r.closest('.provider-card') || r.closest('label').querySelector('div');
+                if (card) {
+                    if (r.checked) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
                 }
             });
+        });
+    });
 
-            if (!valid) {
+    // Amount calculator for transaction creation
+    const amountInput = document.getElementById('amount');
+    if (amountInput) {
+        const commissionRate = parseFloat(amountInput.dataset.commissionRate) || 3;
+        const commissionMin = parseFloat(amountInput.dataset.commissionMin) || 100;
+        const commissionMax = parseFloat(amountInput.dataset.commissionMax) || 50000;
+
+        const commissionDisplay = document.getElementById('commission-display');
+        const netDisplay = document.getElementById('net-amount-display');
+
+        if (commissionDisplay && netDisplay) {
+            amountInput.addEventListener('input', function() {
+                const amount = parseFloat(this.value) || 0;
+                let commission = amount * (commissionRate / 100);
+                commission = Math.max(commissionMin, Math.min(commission, commissionMax));
+                const net = amount - commission;
+
+                commissionDisplay.textContent = commission.toLocaleString('fr-FR') + ' FCFA';
+                netDisplay.textContent = net.toLocaleString('fr-FR') + ' FCFA';
+            });
+        }
+    }
+
+    // Copy to clipboard
+    const copyButtons = document.querySelectorAll('[data-copy]');
+    copyButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const text = this.dataset.copy;
+            navigator.clipboard.writeText(text).then(() => {
+                const original = this.innerHTML;
+                this.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+                setTimeout(() => this.innerHTML = original, 2000);
+            });
+        });
+    });
+
+    // Confirm before dangerous actions
+    const confirmForms = document.querySelectorAll('[data-confirm]');
+    confirmForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const message = this.dataset.confirm || 'Etes-vous sur ?';
+            if (!confirm(message)) {
                 e.preventDefault();
             }
         });
     });
 
-    // ============================================================
-    // 8. Copy to Clipboard
-    // ============================================================
-    const copyBtns = document.querySelectorAll('[data-copy]');
-
-    copyBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const text = btn.getAttribute('data-copy');
-            navigator.clipboard.writeText(text).then(() => {
-                const original = btn.innerHTML;
-                btn.innerHTML = '<span class="text-emerald-600">Copie !</span>';
-                setTimeout(() => {
-                    btn.innerHTML = original;
-                }, 2000);
-            });
-        });
-    });
-
-    // ============================================================
-    // 9. Lazy Load Images
-    // ============================================================
-    const lazyImages = document.querySelectorAll('img[data-src]');
-
-    const imageObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                img.src = img.getAttribute('data-src');
-                img.removeAttribute('data-src');
-                imageObserver.unobserve(img);
+    // Dropdown toggles (fallback for browsers without Alpine.js)
+    const dropdownToggles = document.querySelectorAll('[data-dropdown-toggle]');
+    dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const targetId = this.dataset.dropdownToggle;
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.classList.toggle('hidden');
             }
         });
     });
 
-    lazyImages.forEach(img => imageObserver.observe(img));
+    document.addEventListener('click', function() {
+        document.querySelectorAll('[data-dropdown]').forEach(d => d.classList.add('hidden'));
+    });
 
-    console.log('PayXora JS loaded successfully');
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    });
+
+    // Intersection Observer for animations
+    const animatedElements = document.querySelectorAll('[data-animate]');
+    if (animatedElements.length > 0 && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-fade-in');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+
+        animatedElements.forEach(el => observer.observe(el));
+    }
+
+    // Phone number formatting
+    const phoneInputs = document.querySelectorAll('input[type="tel"]');
+    phoneInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '').substring(0, 15);
+        });
+    });
+
+    // Print transaction
+    const printButtons = document.querySelectorAll('[data-print]');
+    printButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            window.print();
+        });
+    });
 });
 
-// ============================================================
-// Shake Keyframes (injected via JS since we use Tailwind)
-// ============================================================
-const shakeStyle = document.createElement('style');
-shakeStyle.textContent = `
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-        20%, 40%, 60%, 80% { transform: translateX(5px); }
+// Alpine.js helpers
+window.PayXora = {
+    // Format currency
+    formatCurrency: function(amount, currency = 'FCFA') {
+        return new Intl.NumberFormat('fr-FR').format(amount) + ' ' + currency;
+    },
+
+    // Format date
+    formatDate: function(date) {
+        return new Date(date).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    },
+
+    // Debounce function
+    debounce: function(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
-`;
-document.head.appendChild(shakeStyle);
+};

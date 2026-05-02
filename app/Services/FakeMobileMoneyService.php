@@ -2,36 +2,52 @@
 
 namespace App\Services;
 
-class FakeMobileMoneyService implements MobileMoneyInterface
+use App\Contracts\PaymentProviderInterface;
+use Illuminate\Support\Facades\Log;
+
+class FakeMobileMoneyService implements PaymentProviderInterface
 {
-    public function initiatePayment(string $phone, int $amount, string $reference): array
+    public function initiatePayment(float $amount, string $currency, string $phoneNumber, string $description): array
     {
-        usleep(500000); // Simule un délai réseau
+        Log::info('Fake MNO payment initiated', [
+            'amount' => $amount,
+            'currency' => $currency,
+            'phone' => $phoneNumber,
+        ]);
+
+        // Simulation d'un delai reseau
+        usleep(500000); // 500ms
 
         return [
             'success' => true,
-            'reference' => $reference,
-            'provider_reference' => 'FAKE-' . uniqid(),
-            'message' => "Paiement de {$amount} FCFA initié depuis {$phone}",
+            'transaction_id' => 'FAKE-' . strtoupper(uniqid()),
             'status' => 'pending',
+            'message' => 'Paiement simule avec succes',
         ];
     }
 
-    public function checkStatus(string $reference): array
+    public function checkStatus(string $transactionId): array
     {
         return [
             'success' => true,
-            'status' => 'success',
-            'message' => 'Paiement confirmé',
+            'status' => 'completed',
+            'message' => 'Paiement confirme',
         ];
     }
 
-    public function refund(string $reference, int $amount): array
+    public function refund(string $transactionId, float $amount): array
     {
+        Log::info('Fake MNO refund', ['transaction_id' => $transactionId, 'amount' => $amount]);
+
         return [
             'success' => true,
-            'reference' => $reference,
-            'message' => "Remboursement de {$amount} FCFA effectué",
+            'status' => 'refunded',
+            'message' => 'Remboursement simule avec succes',
         ];
+    }
+
+    public function validateCallback(array $payload): bool
+    {
+        return true;
     }
 }

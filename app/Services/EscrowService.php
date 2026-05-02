@@ -3,28 +3,28 @@
 namespace App\Services;
 
 use App\Enums\TransactionStatus;
+use App\Models\EscrowAccount;
 use App\Models\Transaction;
 use App\Models\TransactionLog;
-use App\Models\EscrowAccount;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class EscrowService
 {
     /**
-     * Créer une transaction en brouillon
+     * Creer une transaction en brouillon
      */
-    public function createDraft(array $data): Transaction
+    public function create(array $data): Transaction
     {
         $transaction = Transaction::create([
             'seller_id' => Auth::id(),
-            'title' => $data['title'],
-            'description' => $data['description'] ?? null,
+            'product_name' => $data['product_name'],
+            'product_description' => $data['product_description'] ?? null,
             'amount' => $data['amount'],
             'currency' => $data['currency'] ?? 'XOF',
-            'status' => TransactionStatus::DRAFT->value,
-            'delivery_address' => $data['delivery_address'] ?? null,
-            'commission_amount' => $this->calculateCommission($data['amount']),
+            'status' => TransactionStatus::DRAFT,
+            'shipping_address' => $data['shipping_address'] ?? null,
+            'seller_notes' => $data['seller_notes'] ?? null,
         ]);
 
         $this->logTransaction($transaction, 'created', null, TransactionStatus::DRAFT);
@@ -44,7 +44,7 @@ class EscrowService
         $oldStatus = $transaction->status;
 
         $transaction->update([
-            'status' => TransactionStatus::PENDING_PAYMENT->value,
+            'status' => TransactionStatus::PENDING_PAYMENT,
         ]);
 
         $this->logTransaction($transaction, 'published', $oldStatus, TransactionStatus::PENDING_PAYMENT);
@@ -53,7 +53,7 @@ class EscrowService
     }
 
     /**
-     * Confirmer le paiement (fonds bloqués)
+     * Confirmer le paiement (fonds bloques)
      */
     public function fund(Transaction $transaction, int $buyerId): bool
     {
@@ -66,13 +66,14 @@ class EscrowService
         DB::transaction(function () use ($transaction, $buyerId) {
             $transaction->update([
                 'buyer_id' => $buyerId,
-                'status' => TransactionStatus::FUNDED->value,
+                'status' => TransactionStatus::FUNDED,
+                'paid_at' => now(),
             ]);
 
-            // Créer/mettre à jour le compte séquestre
+            // Creer/mettre a jour le compte sequestre
             EscrowAccount::updateOrCreate(
                 ['user_id' => $transaction->seller_id],
-                ['status' => 'active']
+                ['status' => 'active', 'currency' => 'XOF']
             );
         });
 
@@ -82,7 +83,7 @@ class EscrowService
     }
 
     /**
-     * Marquer comme expédié
+     * Marquer comme expedie
      */
     public function ship(Transaction $transaction, ?string $trackingNumber = null): bool
     {
@@ -93,8 +94,9 @@ class EscrowService
         $oldStatus = $transaction->status;
 
         $transaction->update([
-            'status' => TransactionStatus::SHIPPED->value,
+            'status' => TransactionStatus::SHIPPED,
             'tracking_number' => $trackingNumber,
+            'shipped_at' => now(),
         ]);
 
         $this->logTransaction($transaction, 'shipped', $oldStatus, TransactionStatus::SHIPPED);
@@ -103,7 +105,7 @@ class EscrowService
     }
 
     /**
-     * Marquer comme livré
+     * Marquer comme livre
      */
     public function deliver(Transaction $transaction): bool
     {
@@ -114,8 +116,9 @@ class EscrowService
         $oldStatus = $transaction->status;
 
         $transaction->update([
-            'status' => TransactionStatus::DELIVERED->value,
-            'confirmation_deadline' => now()->addHours(config('payxora.confirmation_deadline_hours', 48)),
+            'status' => TransactionStatus::DELIVERED,
+            'delivered_at' => now(),
+            'confirmation_deadline' => now()->addHours(config('payxora.dispute_response_hours', 48)),
         ]);
 
         $this->logTransaction($transaction, 'delivered', $oldStatus, TransactionStatus::DELIVERED);
@@ -124,7 +127,7 @@ class EscrowService
     }
 
     /**
-     * Confirmer réception et libérer fonds
+     * Confirmer reception et liberer fonds
      */
     public function complete(Transaction $transaction): bool
     {
@@ -136,10 +139,11 @@ class EscrowService
 
         DB::transaction(function () use ($transaction) {
             $transaction->update([
-                'status' => TransactionStatus::COMPLETED->value,
+                'status' => TransactionStatus::COMPLETED,
+                'completed_at' => now(),
             ]);
 
-            // Libérer les fonds vers le vendeur
+            // Liberer les fonds vers le vendeur
             $this->releaseFunds($transaction);
         });
 
@@ -160,10 +164,10 @@ class EscrowService
         $oldStatus = $transaction->status;
 
         $transaction->update([
-            'status' => TransactionStatus::DISPUTED->value,
+            'status' => TransactionStatus::DISPUTED,
         ]);
 
-        // Créer le litige
+        // Creer le litige
         \App\Models\Dispute::create([
             'transaction_id' => $transaction->id,
             'initiator_id' => $initiatorId,
@@ -189,7 +193,7 @@ class EscrowService
 
         DB::transaction(function () use ($transaction) {
             $transaction->update([
-                'status' => TransactionStatus::REFUNDED->value,
+                'status' => TransactionStatus::REFUNDED,
             ]);
 
             // Rembourser l'acheteur
@@ -213,7 +217,8 @@ class EscrowService
         $oldStatus = $transaction->status;
 
         $transaction->update([
-            'status' => TransactionStatus::CANCELLED->value,
+            'status' => TransactionStatus::CANCELLED,
+            'cancelled_at' => now(),
         ]);
 
         $this->logTransaction($transaction, 'cancelled', $oldStatus, TransactionStatus::CANCELLED);
@@ -226,19 +231,22 @@ class EscrowService
      */
     public function calculateCommission(float $amount): float
     {
-        $config = config('payxora.commission');
-        $commission = $amount * $config['rate'];
+        $rate = config('payxora.commission_rate', 3.0);
+        $min = config('payxora.commission_minimum', 100);
+        $max = config('payxora.commission_maximum', 50000);
 
-        return max($config['minimum'], min($commission, $config['maximum']));
+        $commission = $amount * ($rate / 100);
+
+        return max($min, min($commission, $max));
     }
 
     /**
      * Logger une action sur la transaction
      */
     protected function logTransaction(
-        Transaction $transaction, 
-        string $action, 
-        ?TransactionStatus $fromStatus, 
+        Transaction $transaction,
+        string $action,
+        ?TransactionStatus $fromStatus,
         TransactionStatus $toStatus
     ): void {
         TransactionLog::create([
@@ -252,7 +260,7 @@ class EscrowService
     }
 
     /**
-     * Libérer les fonds au vendeur
+     * Liberer les fonds au vendeur
      */
     protected function releaseFunds(Transaction $transaction): void
     {
@@ -271,7 +279,7 @@ class EscrowService
      */
     protected function processRefund(Transaction $transaction): void
     {
-        // Logique de remboursement via le service de paiement
-        // À implémenter selon le provider MNO
+        // TODO: Implementer le remboursement via le service de paiement MNO
+        // Cette methode sera appelee par le PaymentService quand les providers seront integres
     }
 }

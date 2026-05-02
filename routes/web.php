@@ -1,27 +1,27 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\DisputeAdminController;
+use App\Http\Controllers\Admin\TransactionAdminController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Auth\KycController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LandingController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\DisputeController;
-use App\Http\Controllers\KycController;
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\Auth\LogoutController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\NewPasswordController;
-use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\TransactionAdminController;
-use App\Http\Controllers\Admin\DisputeAdminController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Routes publiques - Landing & Information
+| Pages publiques
 |--------------------------------------------------------------------------
 */
 
@@ -33,28 +33,61 @@ Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
 
 /*
 |--------------------------------------------------------------------------
-| Authentification - Système unifié (custom, pas Breeze)
+| Authentification — Guest only
 |--------------------------------------------------------------------------
 */
 
 Route::middleware('guest')->group(function () {
+    // Inscription
     Route::get('/inscription', [RegisterController::class, 'show'])->name('register');
     Route::post('/inscription', [RegisterController::class, 'store'])->name('register.store');
 
+    // Connexion
     Route::get('/connexion', [LoginController::class, 'show'])->name('login');
     Route::post('/connexion', [LoginController::class, 'store'])->name('login.store');
 
+    // Mot de passe oublie
     Route::get('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'store'])->name('password.email');
     Route::get('/reinitialiser-mot-de-passe/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
     Route::post('/reinitialiser-mot-de-passe', [NewPasswordController::class, 'store'])->name('password.store');
 });
 
+// Deconnexion
 Route::post('/deconnexion', [LogoutController::class, 'store'])->name('logout')->middleware('auth');
 
 /*
 |--------------------------------------------------------------------------
-| KYC - Know Your Customer
+| Verification email — Auth requis
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth')->group(function () {
+    Route::get('/verification-email', function () {
+        return view('auth.verify-email');
+    })->name('verification.notice');
+
+    Route::get('/verification-email/{id}/{hash}', function ($id, $hash) {
+        // Laravel Breeze style — adapte selon ton implementation
+        $user = Auth::user();
+        if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+            abort(403);
+        }
+        if (!$user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+        return redirect()->intended(route('dashboard'));
+    })->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+
+    Route::post('/email/verification-notification', function () {
+        Auth::user()->sendEmailVerificationNotification();
+        return back()->with('status', 'verification-link-sent');
+    })->middleware('throttle:6,1')->name('verification.send');
+});
+
+/*
+|--------------------------------------------------------------------------
+| KYC — Auth requis
 |--------------------------------------------------------------------------
 */
 
@@ -66,7 +99,7 @@ Route::middleware('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Espace utilisateur - Auth + KYC requis
+| Espace utilisateur — Auth + KYC verifies
 |--------------------------------------------------------------------------
 */
 
@@ -88,6 +121,8 @@ Route::middleware(['auth', 'kyc'])->group(function () {
     Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
     Route::post('/transactions/{transaction}/payer', [TransactionController::class, 'pay'])->name('transactions.pay');
+    Route::post('/transactions/{transaction}/expedier', [TransactionController::class, 'ship'])->name('transactions.ship');
+    Route::post('/transactions/{transaction}/livrer', [TransactionController::class, 'markDelivered'])->name('transactions.deliver');
     Route::post('/transactions/{transaction}/confirmer-reception', [TransactionController::class, 'confirmDelivery'])->name('transactions.confirm');
     Route::post('/transactions/{transaction}/annuler', [TransactionController::class, 'cancel'])->name('transactions.cancel');
 
@@ -108,7 +143,7 @@ Route::middleware(['auth', 'kyc'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Administration - Auth + Admin
+| Administration — Auth + Admin
 |--------------------------------------------------------------------------
 */
 

@@ -2,22 +2,25 @@
 
 namespace App\Contracts;
 
-use App\Models\KycProfile;
-
 interface KycProviderInterface
 {
     /**
-     * Vérifier la validité d'un document d'identité
+     * Verifier un document d'identite
      */
-    public function verifyDocument(string $idNumber, string $idType): array;
+    public function verifyDocument(string $documentPath, string $documentType): array;
 
     /**
-     * Vérifier la correspondance selfie/document
+     * Verifier un selfie / liveness
      */
-    public function verifyFaceMatch(string $idPhotoPath, string $selfiePath): array;
+    public function verifySelfie(string $selfiePath, string $documentPath): array;
 
     /**
-     * Vérifier si le provider est disponible
+     * Verifier un numero de telephone
      */
-    public function isAvailable(): bool;
+    public function verifyPhone(string $phoneNumber, string $otp): array;
+
+    /**
+     * Generer un OTP
+     */
+    public function generateOtp(string $phoneNumber): array;
 }

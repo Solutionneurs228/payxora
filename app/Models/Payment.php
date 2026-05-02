@@ -2,24 +2,51 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'transaction_id', 'user_id', 'method', 'amount', 'fees',
-        'provider_reference', 'status', 'provider_response', 'processed_at',
+        'transaction_id',
+        'provider',
+        'phone_number',
+        'amount',
+        'currency',
+        'status',
+        'reference',
+        'provider_reference',
+        'paid_at',
+        'failure_reason',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'fees' => 'decimal:2',
-        'processed_at' => 'datetime',
+        'paid_at' => 'datetime',
+        'status' => PaymentStatus::class,
     ];
 
-    public function transaction() { return $this->belongsTo(Transaction::class); }
-    public function user() { return $this->belongsTo(User::class); }
+    public function transaction(): BelongsTo
+    {
+        return $this->belongsTo(Transaction::class);
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === PaymentStatus::PENDING;
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === PaymentStatus::COMPLETED;
+    }
+
+    public function isFailed(): bool
+    {
+        return $this->status === PaymentStatus::FAILED;
+    }
 }

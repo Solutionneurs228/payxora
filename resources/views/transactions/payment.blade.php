@@ -1,103 +1,74 @@
 @extends('layouts.app')
 
-@section('title', 'Paiement')
+@section('title', 'Paiement — PayXora')
 
 @section('content')
-<section class="py-8 px-4 sm:px-6 lg:px-8 bg-slate-50 min-h-screen">
-    <div class="max-w-lg mx-auto">
-        <div class="mb-8 text-center">
-            <div class="w-16 h-16 mx-auto bg-emerald-100 rounded-2xl flex items-center justify-center mb-4">
-                <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold text-slate-900">Paiement securise</h1>
-            <p class="text-slate-500">Transaction: {{ $transaction->reference }}</p>
+<div class="max-w-xl mx-auto px-4 py-8">
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600">
+            <h1 class="text-xl font-bold text-white">Paiement securise</h1>
+            <p class="text-green-100 text-sm mt-1">{{ $transaction->product_name }}</p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-            <!-- Transaction Summary -->
-            <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-emerald-100">Produit</span>
-                    <span class="font-medium">{{ Str::limit($transaction->product_name, 30) }}</span>
-                </div>
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-emerald-100">Montant</span>
-                    <span class="font-bold text-xl">{{ number_format($transaction->amount, 0, ',', ' ') }} FCFA</span>
-                </div>
-                <div class="flex justify-between items-center pt-3 border-t border-white/20">
-                    <span class="text-emerald-100">Frais (1%)</span>
-                    <span class="font-medium">{{ number_format($transaction->amount * 0.01, 0, ',', ' ') }} FCFA</span>
-                </div>
-                <div class="flex justify-between items-center mt-2">
-                    <span class="text-emerald-100">Total a payer</span>
-                    <span class="font-bold text-2xl">{{ number_format($transaction->amount * 1.01, 0, ',', ' ') }} FCFA</span>
-                </div>
+        <div class="p-6">
+            <div class="text-center mb-6">
+                <p class="text-gray-500 text-sm">Montant a payer</p>
+                <p class="text-3xl font-bold text-gray-900">{{ number_format($transaction->amount, 0, ',', ' ') }} FCFA</p>
+                <p class="text-xs text-gray-400 mt-1">Reference: {{ $transaction->reference }}</p>
             </div>
 
-            <!-- Payment Methods -->
-            <div class="p-6">
-                <h3 class="font-semibold text-slate-900 mb-4">Choisir un mode de paiement</h3>
+            <form method="POST" action="{{ route('payment.mobile-money', $transaction) }}" class="space-y-4">
+                @csrf
 
-                <form method="POST" action="{{ route('payment.mobile-money', $transaction) }}" class="space-y-4">
-                    @csrf
-
-                    <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Operateur Mobile Money</label>
+                    <div class="grid grid-cols-2 gap-3">
                         <label class="cursor-pointer">
-                            <input type="radio" name="method" value="tmoney" class="peer sr-only" checked>
-                            <div class="p-4 rounded-xl border-2 border-slate-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all text-center">
-                                <div class="w-12 h-12 mx-auto mb-2 bg-yellow-400 rounded-lg flex items-center justify-center">
-                                    <span class="text-yellow-900 font-bold text-xs">T-Money</span>
-                                </div>
-                                <span class="text-sm font-medium text-slate-700 peer-checked:text-emerald-700">T-Money</span>
+                            <input type="radio" name="provider" value="tmoney" class="peer sr-only" required>
+                            <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-indigo-600 peer-checked:bg-indigo-50 transition hover:border-indigo-300">
+                                <div class="w-10 h-10 bg-blue-600 rounded-full mx-auto mb-2 flex items-center justify-center text-white font-bold text-xs">T</div>
+                                <span class="text-sm font-medium text-gray-700">TMoney</span>
                             </div>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="radio" name="method" value="moov" class="peer sr-only">
-                            <div class="p-4 rounded-xl border-2 border-slate-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all text-center">
-                                <div class="w-12 h-12 mx-auto mb-2 bg-blue-500 rounded-lg flex items-center justify-center">
-                                    <span class="text-white font-bold text-xs">Moov</span>
-                                </div>
-                                <span class="text-sm font-medium text-slate-700 peer-checked:text-emerald-700">Moov Money</span>
+                            <input type="radio" name="provider" value="moov" class="peer sr-only">
+                            <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-indigo-600 peer-checked:bg-indigo-50 transition hover:border-indigo-300">
+                                <div class="w-10 h-10 bg-orange-500 rounded-full mx-auto mb-2 flex items-center justify-center text-white font-bold text-xs">M</div>
+                                <span class="text-sm font-medium text-gray-700">Moov</span>
                             </div>
                         </label>
                     </div>
+                    @error('provider')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
 
-                    <div>
-                        <label for="phone" class="block text-sm font-medium text-slate-700 mb-1">Numero Mobile Money</label>
-                        <div class="relative">
-                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">+228</span>
-                            <input type="tel" name="phone" id="phone" required
-                                class="w-full pl-14 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all bg-slate-50 focus:bg-white"
-                                placeholder="90 00 00 00">
-                        </div>
-                        <p class="mt-1 text-xs text-slate-400">Vous recevrez une demande de confirmation sur ce numero</p>
-                    </div>
+                <div>
+                    <label for="phone_number" class="block text-sm font-medium text-gray-700 mb-1">Numero de telephone</label>
+                    <input type="tel" name="phone_number" id="phone_number" required placeholder="90000000"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition @error('phone_number') border-red-500 @enderror">
+                    @error('phone_number')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
 
-                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-                        <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                         <div>
-                            <p class="text-sm font-medium text-amber-800">Paiement securise</p>
-                            <p class="text-sm text-amber-700">Vos fonds seront bloques dans un compte sequestre jusqu'a confirmation de livraison.</p>
+                            <p class="text-sm text-yellow-800 font-medium">Mode developpement</p>
+                            <p class="text-xs text-yellow-700 mt-1">Le paiement est simule. En production, une notification USSD sera envoyee sur votre telephone pour confirmer.</p>
                         </div>
                     </div>
+                </div>
 
-                    <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/25 hover:shadow-emerald-600/40 transition-all transform hover:-translate-y-0.5 text-lg">
-                        Payer {{ number_format($transaction->amount * 1.01, 0, ',', ' ') }} FCFA
-                    </button>
-                </form>
-            </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+                    Confirmer le paiement
+                </button>
+            </form>
         </div>
-
-        <p class="text-center text-sm text-slate-400 mt-6">
-            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-            </svg>
-            Transaction securisee par PayXora Escrow
-        </p>
     </div>
-</section>
+</div>
 @endsection

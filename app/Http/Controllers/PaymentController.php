@@ -2,100 +2,73 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Transaction;
+use App\Http\Requests\Payment\InitiatePaymentRequest;
 use App\Models\Payment;
-use App\Models\EscrowAccount;
-use App\Models\Notification;
-use App\Models\ActivityLog;
+use App\Models\Transaction;
+use App\Services\PaymentService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
 {
+    public function __construct(
+        private PaymentService $paymentService
+    ) {}
+
     public function show(Transaction $transaction)
     {
+        $this->authorize('view', $transaction);
+
         if ($transaction->buyer_id !== Auth::id()) {
-            abort(403);
+            abort(403, 'Seul l'acheteur designe peut effectuer le paiement.');
         }
 
         return view('transactions.payment', compact('transaction'));
     }
 
-    public function processMobileMoney(Request $request, Transaction $transaction)
+    public function processMobileMoney(InitiatePaymentRequest $request, Transaction $transaction)
     {
-        $validated = $request->validate([
-            'method' => ['required', 'in:tmoney,moov'],
-            'phone' => ['required', 'regex:/^\+228[0-9]{8}$/'],
-        ]);
+        $this->authorize('view', $transaction);
 
-        // Simulation API Mobile Money (a remplacer par integration reelle)
-        $providerRef = strtoupper(uniqid('MM-'));
+        if ($transaction->buyer_id !== Auth::id()) {
+            abort(403);
+        }
 
-        $payment = Payment::create([
-            'transaction_id' => $transaction->id,
-            'user_id' => Auth::id(),
-            'method' => $validated['method'],
-            'amount' => $transaction->amount,
-            'fees' => $transaction->amount * 0.01, // 1% frais
-            'provider_reference' => $providerRef,
-            'status' => 'processing',
-        ]);
+        $result = $this->paymentService->initiateMobileMoney(
+            $transaction,
+            $request->input('provider'),
+            $request->input('phone_number')
+        );
 
-        // Simulation reussite (en prod: appel API TMoney/Moov)
-        $payment->update([
-            'status' => 'success',
-            'processed_at' => now(),
-        ]);
+        if ($result['success']) {
+            return redirect()->route('payment.success', $transaction)
+                ->with('success', $result['message']);
+        }
 
-        $transaction->update([
-            'status' => 'paid',
-            'payment_method' => $validated['method'],
-            'payment_reference' => $providerRef,
-            'paid_at' => now(),
-        ]);
-
-        // Creer compte sequestre
-        EscrowAccount::create([
-            'transaction_id' => $transaction->id,
-            'amount_held' => $transaction->amount,
-            'status' => 'holding',
-        ]);
-
-        // Notifier vendeur
-        Notification::create([
-            'user_id' => $transaction->seller_id,
-            'type' => 'payment_received',
-            'title' => 'Paiement recu',
-            'message' => "Paiement recu pour {$transaction->product_name}. Expediez maintenant !",
-            'link' => route('transactions.show', $transaction),
-        ]);
-
-        // Email Brevo
-        \App\Services\BrevoService::sendPaymentReceived($transaction->seller, $transaction);
-
-        ActivityLog::log('payment_processed', $payment, Auth::user(), [
-            'method' => $validated['method'],
-            'amount' => $transaction->amount,
-        ]);
-
-        return redirect()->route('payment.success', $transaction)
-            ->with('success', 'Paiement effectue avec succes !');
+        return redirect()->route('payment.failure', $transaction)
+            ->with('error', $result['message']);
     }
 
     public function callback(Request $request, Transaction $transaction)
     {
-        // Webhook pour callback TMoney/Moov
-        // Verification signature, mise a jour statut
+        $providerReference = $request->input('provider_reference');
+
+        $this->paymentService->handleCallback($providerReference, $request->all());
+
         return response()->json(['status' => 'ok']);
     }
 
     public function success(Transaction $transaction)
     {
+        $this->authorize('view', $transaction);
+
         return view('transactions.payment-success', compact('transaction'));
     }
 
     public function failure(Transaction $transaction)
     {
+        $this->authorize('view', $transaction);
+
         return view('transactions.payment-failure', compact('transaction'));
     }
 }

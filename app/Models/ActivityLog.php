@@ -4,28 +4,42 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ActivityLog extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'action', 'entity_type', 'entity_id', 'details',
-        'ip_address', 'user_agent',
+        'user_id',
+        'action',
+        'description',
+        'ip_address',
+        'user_agent',
+        'metadata',
     ];
 
-    public function user() { return $this->belongsTo(User::class); }
+    protected $casts = [
+        'metadata' => 'array',
+    ];
 
-    public static function log(string $action, ?Model $entity = null, ?User $user = null, array $details = [])
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Helper pour logger une action
+     */
+    public static function log(string $action, $subject = null, $user = null, array $metadata = []): self
     {
         return self::create([
             'user_id' => $user?->id,
             'action' => $action,
-            'entity_type' => $entity ? class_basename($entity) : null,
-            'entity_id' => $entity?->id,
-            'details' => json_encode($details),
+            'description' => $subject ? class_basename($subject) . ' #' . $subject->id : null,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
+            'metadata' => array_merge($metadata, $subject ? ['subject_id' => $subject->id, 'subject_type' => get_class($subject)] : []),
         ]);
     }
 }

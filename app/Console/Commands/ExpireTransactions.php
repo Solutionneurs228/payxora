@@ -2,27 +2,30 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\TransactionStatus;
 use App\Models\Transaction;
 use App\Services\EscrowService;
 use Illuminate\Console\Command;
 
 class ExpireTransactions extends Command
 {
-    protected $signature = 'payxora:expire-transactions';
-    protected $description = 'Annule les transactions en attente depuis plus de 48h';
+    protected $signature = 'transactions:expire';
+    protected $description = 'Annule automatiquement les transactions non payees apres le delai';
 
-    public function handle(EscrowService $escrowService): void
+    public function handle(EscrowService $escrowService): int
     {
-        $expired = Transaction::where('status', 'pending')
-            ->where('created_at', '<', now()->subHours(48))
+        $expired = Transaction::where('status', TransactionStatus::PENDING_PAYMENT)
+            ->where('created_at', '<', now()->subHours(config('payxora.auto_expire_hours', 72)))
             ->get();
 
         $count = 0;
         foreach ($expired as $transaction) {
-            $escrowService->cancelTransaction($transaction, 'system');
+            $escrowService->cancel($transaction);
             $count++;
+            $this->info("Transaction {$transaction->reference} annulee (expiration)");
         }
 
-        $this->info("{$count} transactions expirees annulees.");
+        $this->info("{$count} transaction(s) annulee(s)");
+        return 0;
     }
 }

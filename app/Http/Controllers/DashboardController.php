@@ -2,80 +2,100 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Transaction;
+use App\Enums\TransactionStatus;
 use App\Models\Notification;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
-    /**
-     * Affiche le tableau de bord de l'utilisateur.
-     */
     public function index()
     {
         $user = Auth::user();
 
+        // Stats selon le role
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         $stats = [
-            'total_transactions' => Transaction::where('buyer_id', $user->id)
-                ->orWhere('seller_id', $user->id)
+            'total_transactions' => Transaction::where('seller_id', $user->id)
+                ->orWhere('buyer_id', $user->id)
                 ->count(),
-            'pending_transactions' => Transaction::where(function ($query) use ($user) {
-                $query->where('buyer_id', $user->id)
-                      ->orWhere('seller_id', $user->id);
-            })->where('status', 'pending')->count(),
-            'completed_transactions' => Transaction::where(function ($query) use ($user) {
-                $query->where('buyer_id', $user->id)
-                      ->orWhere('seller_id', $user->id);
-            })->where('status', 'completed')->count(),
-            'total_spent' => Transaction::where('buyer_id', $user->id)
-                ->where('status', 'completed')
-                ->sum('amount'),
-            'total_earned' => Transaction::where('seller_id', $user->id)
-                ->where('status', 'completed')
+            'pending_transactions' => Transaction::where(function ($q) use ($user) {
+                    $q->where('seller_id', $user->id)->orWhere('buyer_id', $user->id);
+                })
+                ->where('status', TransactionStatus::PENDING_PAYMENT)
+                ->count(),
+            'active_escrow' => Transaction::where(function ($q) use ($user) {
+                    $q->where('seller_id', $user->id)->orWhere('buyer_id', $user->id);
+                })
+                ->whereIn('status', [
+                    TransactionStatus::FUNDED,
+                    TransactionStatus::SHIPPED,
+                    TransactionStatus::DELIVERED,
+                ])
+                ->count(),
+            'completed_transactions' => Transaction::where(function ($q) use ($user) {
+                    $q->where('seller_id', $user->id)->orWhere('buyer_id', $user->id);
+                })
+                ->where('status', TransactionStatus::COMPLETED)
+                ->count(),
+            'total_sales' => Transaction::where('seller_id', $user->id)
+                ->where('status', TransactionStatus::COMPLETED)
+                ->sum('net_amount'),
+            'total_purchases' => Transaction::where('buyer_id', $user->id)
+                ->where('status', TransactionStatus::COMPLETED)
                 ->sum('amount'),
         ];
 
-        $recentTransactions = Transaction::where('buyer_id', $user->id)
-            ->orWhere('seller_id', $user->id)
-            ->with(['buyer', 'seller', 'payment'])
+        // Transactions recentes
+        $recent_transactions = Transaction::where('seller_id', $user->id)
+            ->orWhere('buyer_id', $user->id)
+            ->with(['seller', 'buyer'])
             ->latest()
             ->limit(5)
             ->get();
 
-        $notifications = Notification::where('user_id', $user->id)
-            ->where('is_read', false)
+        // Notifications non lues
+        $unread_notifications = Notification::where('user_id', $user->id)
+            ->whereNull('read_at')
             ->latest()
             ->limit(5)
             ->get();
 
-        return view('dashboard.index', compact('stats', 'recentTransactions', 'notifications'));
+        $unread_count = Notification::where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->count();
+
+        return view('dashboard.index', compact(
+            'stats',
+            'recent_transactions',
+            'unread_notifications',
+            'unread_count'
+        ));
     }
 
-    /**
-     * Récupère les notifications de l'utilisateur (AJAX).
-     */
-    public function notifications(Request $request)
+    public function notifications()
     {
         $notifications = Notification::where('user_id', Auth::id())
             ->latest()
-            ->limit(20)
-            ->get();
+            ->paginate(20);
 
-        return response()->json($notifications);
+        return view('dashboard.notifications', compact('notifications'));
     }
 
-    /**
-     * Marque une notification comme lue.
-     */
-    public function markNotificationRead(Request $request, $id)
+    public function markNotificationRead(Request $request, int $id)
     {
-        $notification = Notification::where('user_id', Auth::id())
-            ->where('id', $id)
-            ->firstOrFail();
+        $notification = Notification::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
 
-        $notification->update(['is_read' => true]);
+        if ($notification) {
+            $notification->markAsRead();
+        }
 
-        return response()->json(['success' => true]);
+        return back()->with('success', 'Notification marquee comme lue.');
     }
 }

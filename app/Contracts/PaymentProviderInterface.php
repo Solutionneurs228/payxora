@@ -7,10 +7,10 @@ interface PaymentProviderInterface
     /**
      * Initier un paiement
      */
-    public function initiatePayment(float $amount, string $phoneNumber, string $reference): array;
+    public function initiatePayment(float $amount, string $currency, string $phoneNumber, string $description): array;
 
     /**
-     * Vérifier le statut d'un paiement
+     * Verifier le statut d'un paiement
      */
     public function checkStatus(string $transactionId): array;
 
@@ -20,17 +20,7 @@ interface PaymentProviderInterface
     public function refund(string $transactionId, float $amount): array;
 
     /**
-     * Valider la signature du callback
+     * Valider un callback webhook
      */
-    public function verifyCallbackSignature(array $payload, string $signature): bool;
-
-    /**
-     * Nom du provider
-     */
-    public function getName(): string;
-
-    /**
-     * Vérifier si le provider est disponible
-     */
-    public function isAvailable(): bool;
+    public function validateCallback(array $payload): bool;
 }

@@ -7,24 +7,27 @@ use App\Models\User;
 
 class DisputePolicy
 {
-    /**
-     * Determine whether the user can view the dispute.
-     */
     public function view(User $user, Dispute $dispute): bool
     {
-        return $user->id === $dispute->initiator_id
+        return $user->id === $dispute->transaction->seller_id
             || $user->id === $dispute->transaction->buyer_id
-            || $user->id === $dispute->transaction->seller_id
             || $user->isAdmin();
     }
 
-    /**
-     * Determine whether the user can reply to the dispute.
-     */
     public function reply(User $user, Dispute $dispute): bool
     {
-        return $user->id === $dispute->initiator_id
-            || $user->id === $dispute->transaction->buyer_id
-            || $user->id === $dispute->transaction->seller_id;
+        return ($user->id === $dispute->transaction->seller_id
+            || $user->id === $dispute->transaction->buyer_id)
+            && $dispute->isOpen();
+    }
+
+    public function arbitrate(User $user, Dispute $dispute): bool
+    {
+        return $user->isAdmin() && $dispute->isOpen();
+    }
+
+    public function close(User $user, Dispute $dispute): bool
+    {
+        return $user->isAdmin();
     }
 }

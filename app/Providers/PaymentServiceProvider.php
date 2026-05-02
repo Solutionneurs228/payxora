@@ -10,9 +10,8 @@ class PaymentServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(PaymentProviderInterface::class, function ($app) {
-            // Pour l'instant, utiliser le fake service
-            // Quand les vraies API seront intégrées, switcher ici
+        $this->app->bind(PaymentProviderInterface::class, function () {
+            // En dev, on utilise le fake. En prod, on switchera vers TMoney/Moov
             return new FakeMobileMoneyService();
         });
     }

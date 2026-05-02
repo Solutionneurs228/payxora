@@ -1,42 +1,33 @@
-<footer class="bg-slate-900 text-slate-300">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+<footer class="bg-white border-t border-gray-200 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div class="col-span-1 md:col-span-1">
+            <div class="md:col-span-2">
                 <div class="flex items-center gap-2 mb-4">
-                    <svg class="w-8 h-8 text-emerald-500" viewBox="0 0 32 32" fill="none">
-                        <rect x="2" y="8" width="28" height="16" rx="4" stroke="currentColor" stroke-width="2.5" fill="none"/>
-                        <path d="M8 16h16M16 12v8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-                        <circle cx="24" cy="8" r="3" fill="#10B981"/>
-                    </svg>
-                    <span class="text-xl font-bold text-white">Pay<span class="text-emerald-500">Xora</span></span>
+                    @include('components.application-logo')
+                    <span class="font-bold text-lg text-indigo-700">PayXora</span>
                 </div>
-                <p class="text-sm text-slate-400 mb-4">La plateforme de paiement securise (escrow) au Togo. Protegez vos transactions en ligne.</p>
+                <p class="text-sm text-gray-500 max-w-sm">La plateforme de paiement securise par escrow pour le Togo et l'Afrique de l'Ouest. Achetez et vendez en toute confiance.</p>
             </div>
             <div>
-                <h3 class="text-white font-semibold mb-4">Produit</h3>
+                <h3 class="font-semibold text-gray-900 mb-3">Navigation</h3>
                 <ul class="space-y-2 text-sm">
-                    <li><a href="{{ route('how-it-works') }}" class="hover:text-emerald-500 transition">Comment ca marche</a></li>
-                    <li><a href="{{ route('pricing') }}" class="hover:text-emerald-500 transition">Tarifs</a></li>
-                    <li><a href="#" class="hover:text-emerald-500 transition">Securite</a></li>
+                    <li><a href="{{ route('home') }}" class="text-gray-500 hover:text-indigo-600 transition">Accueil</a></li>
+                    <li><a href="{{ route('how-it-works') }}" class="text-gray-500 hover:text-indigo-600 transition">Comment ca marche</a></li>
+                    <li><a href="{{ route('pricing') }}" class="text-gray-500 hover:text-indigo-600 transition">Tarifs</a></li>
+                    <li><a href="{{ route('about') }}" class="text-gray-500 hover:text-indigo-600 transition">A propos</a></li>
                 </ul>
             </div>
             <div>
-                <h3 class="text-white font-semibold mb-4">Entreprise</h3>
+                <h3 class="font-semibold text-gray-900 mb-3">Legal</h3>
                 <ul class="space-y-2 text-sm">
-                    <li><a href="{{ route('about') }}" class="hover:text-emerald-500 transition">A propos</a></li>
-                    <li><a href="{{ route('contact') }}" class="hover:text-emerald-500 transition">Contact</a></li>
-                </ul>
-            </div>
-            <div>
-                <h3 class="text-white font-semibold mb-4">Legal</h3>
-                <ul class="space-y-2 text-sm">
-                    <li><a href="#" class="hover:text-emerald-500 transition">Conditions d utilisation</a></li>
-                    <li><a href="#" class="hover:text-emerald-500 transition">Politique de confidentialite</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-indigo-600 transition">Conditions d'utilisation</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-indigo-600 transition">Politique de confidentialite</a></li>
+                    <li><a href="#" class="text-gray-500 hover:text-indigo-600 transition">Mentions legales</a></li>
                 </ul>
             </div>
         </div>
-        <div class="border-t border-slate-800 mt-8 pt-8 text-center text-sm text-slate-500">
-            <p>&copy; {{ date('Y') }} PayXora SARL. Tous droits reserves. Lome, Togo.</p>
+        <div class="border-t border-gray-100 mt-8 pt-6 text-center">
+            <p class="text-sm text-gray-400">&copy; {{ date('Y') }} PayXora. Tous droits reserves.</p>
         </div>
     </div>
 </footer>

@@ -2,45 +2,47 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\DisputeStatus;
+use App\Enums\KycStatus;
+use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\Transaction;
 use App\Models\Dispute;
-use App\Models\KycProfile;
-use Illuminate\Http\Request;
+use App\Models\Transaction;
+use App\Models\User;
 
 class AdminController extends Controller
 {
-    /**
-     * Affiche le tableau de bord admin.
-     */
     public function dashboard()
     {
         $stats = [
             'total_users' => User::count(),
+            'active_users' => User::where('is_active', true)->count(),
+            'pending_kyc' => User::whereHas('kycProfile', function ($q) {
+                $q->where('status', KycStatus::PENDING);
+            })->count(),
             'total_transactions' => Transaction::count(),
-            'open_disputes' => Dispute::where('status', 'open')->orWhere('status', 'mediation')->count(),
-            'pending_kyc' => KycProfile::where('status', 'pending')->count(),
-            'total_volume' => Transaction::where('status', 'completed')->sum('amount'),
-            'monthly_transactions' => Transaction::whereMonth('created_at', now()->month)->count(),
+            'pending_transactions' => Transaction::where('status', TransactionStatus::PENDING_PAYMENT)->count(),
+            'active_escrow' => Transaction::whereIn('status', [
+                TransactionStatus::FUNDED,
+                TransactionStatus::SHIPPED,
+                TransactionStatus::DELIVERED,
+            ])->count(),
+            'completed_transactions' => Transaction::where('status', TransactionStatus::COMPLETED)->count(),
+            'open_disputes' => Dispute::where('status', DisputeStatus::OPEN)->count(),
+            'total_volume' => Transaction::where('status', TransactionStatus::COMPLETED)->sum('amount'),
         ];
 
-        $recentTransactions = Transaction::with(['buyer', 'seller'])
+        $recent_transactions = Transaction::with(['seller', 'buyer'])
             ->latest()
             ->limit(10)
             ->get();
 
-        $recentDisputes = Dispute::with(['transaction'])
+        $recent_disputes = Dispute::with(['transaction', 'initiator'])
+            ->where('status', DisputeStatus::OPEN)
             ->latest()
             ->limit(5)
             ->get();
 
-        $pendingKycUsers = KycProfile::with('user')
-            ->where('status', 'pending')
-            ->latest()
-            ->limit(5)
-            ->get();
-
-        return view('admin.dashboard', compact('stats', 'recentTransactions', 'recentDisputes', 'pendingKycUsers'));
+        return view('admin.dashboard', compact('stats', 'recent_transactions', 'recent_disputes'));
     }
 }

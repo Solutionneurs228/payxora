@@ -2,68 +2,63 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
-use App\Models\Notification;
+use App\Services\EscrowService;
 use Illuminate\Http\Request;
 
 class TransactionAdminController extends Controller
 {
+    public function __construct(
+        private EscrowService $escrowService
+    ) {}
+
     public function index()
     {
-        $transactions = Transaction::latest()->paginate(20);
+        $transactions = Transaction::with(['seller', 'buyer', 'payment'])
+            ->latest()
+            ->paginate(25);
+
         return view('admin.transactions.index', compact('transactions'));
     }
 
     public function show(Transaction $transaction)
     {
-        $transaction->load(['seller', 'buyer', 'payment', 'escrow', 'dispute']);
+        $transaction->load(['seller', 'buyer', 'payment', 'escrow', 'dispute', 'logs']);
+
         return view('admin.transactions.show', compact('transaction'));
     }
 
-    public function releaseFunds(Request $request, Transaction $transaction)
+    public function releaseFunds(Transaction $transaction)
     {
         if (!$transaction->isDelivered()) {
-            return back()->with('error', 'La transaction doit etre livree.');
+            return back()->with('error', 'La transaction doit etre livree pour liberer les fonds.');
         }
 
-        $transaction->update(['status' => 'completed', 'completed_at' => now()]);
+        $success = $this->escrowService->complete($transaction);
 
-        if ($transaction->escrow) {
-            $transaction->escrow->update(['status' => 'released', 'released_at' => now()]);
+        if (!$success) {
+            return back()->with('error', 'Impossible de liberer les fonds.');
         }
 
-        Notification::create([
-            'user_id' => $transaction->seller_id,
-            'type' => 'funds_released',
-            'title' => 'Fonds liberes',
-            'message' => "Les fonds pour {$transaction->product_name} ont ete liberes.",
-            'link' => route('transactions.show', $transaction),
-        ]);
-
-        return back()->with('success', 'Fonds liberes.');
+        return redirect()->route('admin.transactions.show', $transaction)
+            ->with('success', 'Fonds liberes au vendeur.');
     }
 
-    public function refund(Request $request, Transaction $transaction)
+    public function refund(Transaction $transaction)
     {
-        if ($transaction->isCompleted()) {
-            return back()->with('error', 'Transaction deja terminee.');
+        if ($transaction->isCompleted() || $transaction->isRefunded() || $transaction->isCancelled()) {
+            return back()->with('error', 'Cette transaction ne peut plus etre remboursee.');
         }
 
-        $transaction->update(['status' => 'refunded']);
+        $success = $this->escrowService->refund($transaction);
 
-        if ($transaction->escrow) {
-            $transaction->escrow->update(['status' => 'refunded', 'refunded_at' => now()]);
+        if (!$success) {
+            return back()->with('error', 'Impossible de rembourser.');
         }
 
-        Notification::create([
-            'user_id' => $transaction->buyer_id,
-            'type' => 'refund_processed',
-            'title' => 'Remboursement effectue',
-            'message' => "Vous avez ete rembourse pour {$transaction->product_name}.",
-            'link' => route('transactions.show', $transaction),
-        ]);
-
-        return back()->with('success', 'Remboursement effectue.');
+        return redirect()->route('admin.transactions.show', $transaction)
+            ->with('success', 'Acheteur rembourse.');
     }
 }

@@ -15,22 +15,16 @@ class CreateDisputeRequest extends FormRequest
     {
         return [
             'transaction_id' => ['required', 'exists:transactions,id'],
-            'reason' => ['required', 'string', 'in:non_delivery,wrong_item,damaged,not_as_described,other'],
-            'description' => ['required', 'string', 'max:3000', 'min:20'],
-            'evidence.*' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+            'reason' => ['required', 'string', 'min:10', 'max:500'],
+            'description' => ['nullable', 'string', 'max:5000'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'transaction_id.required' => 'La transaction est obligatoire.',
-            'transaction_id.exists' => 'Cette transaction n\'existe pas.',
-            'reason.required' => 'Le motif du litige est obligatoire.',
-            'reason.in' => 'Le motif selectionne n\'est pas valide.',
-            'description.required' => 'La description du litige est obligatoire.',
-            'description.min' => 'La description doit contenir au moins 20 caracteres.',
-            'description.max' => 'La description ne doit pas depasser 3000 caracteres.',
+            'reason.min' => 'Le motif doit contenir au moins 10 caracteres.',
+            'reason.max' => 'Le motif ne doit pas depasser 500 caracteres.',
         ];
     }
 }
