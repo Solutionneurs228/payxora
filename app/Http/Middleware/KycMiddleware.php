@@ -9,12 +9,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class KycMiddleware
 {
-    /**
-     * Handle an incoming request.
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        $user = auth()->user();
 
         if (!$user) {
             return redirect()->route('login');
@@ -29,8 +26,8 @@ class KycMiddleware
         $kycProfile = $user->kycProfile;
 
         if (!$kycProfile) {
-            return redirect()->route('kyc.show')
-                ->with('warning', 'Veuillez completer votre verification d'identite (KYC) pour acceder a cette page.');
+            return redirect()->route('kyc')
+                ->with('warning', 'Veuillez completer votre verification d\'identite (KYC) pour acceder a cette page.');
         }
 
         if ($kycProfile->status !== KycStatus::APPROVED) {
@@ -40,7 +37,7 @@ class KycMiddleware
             }
 
             if ($kycProfile->status === KycStatus::REJECTED) {
-                return redirect()->route('kyc.show')
+                return redirect()->route('kyc')
                     ->with('error', 'Votre verification KYC a ete refusee. Veuillez soumettre a nouveau vos documents.');
             }
         }

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Kyc\SubmitKycRequest;
 use App\Models\KycProfile;
 use App\Services\KycService;
 use App\Services\NotificationService;
@@ -41,7 +40,7 @@ class KycController extends Controller
     /**
      * Soumet les informations KYC avec upload de fichiers.
      */
-    public function store(SubmitKycRequest $request)
+    public function store(Request $request)
     {
         $user = Auth::user();
 
@@ -53,7 +52,7 @@ class KycController extends Controller
 
         // Stocker les fichiers
         $idFrontPath = $request->file('id_front')->store('kyc/' . $user->id . '/id_front', 'private');
-        $idBackPath = $request->hasFile('id_back') 
+        $idBackPath = $request->hasFile('id_back')
             ? $request->file('id_back')->store('kyc/' . $user->id . '/id_back', 'private')
             : null;
         $selfiePath = $request->file('selfie')->store('kyc/' . $user->id . '/selfie', 'private');

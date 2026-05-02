@@ -53,7 +53,7 @@ class DisputeController extends Controller
         $this->authorize('view', $transaction);
 
         if (!$transaction->canOpenDispute()) {
-            return back()->with('error', 'Cette transaction ne peut plus faire l'objet d'un litige.');
+            return back()->with('error', 'Cette transaction ne peut plus faire l\'objet d\'un litige.');
         }
 
         $dispute = $this->disputeService->open(

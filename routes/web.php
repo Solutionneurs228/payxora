@@ -1,25 +1,24 @@
 <?php
 
-use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Admin\DisputeController as AdminDisputeController;
-use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
-use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\DisputeController;
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LandingController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\DisputeController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\Auth\PhoneVerificationController;
+use App\Http\Controllers\Auth\KycController;
 use App\Http\Middleware\RateLimitPayment;
-use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Routes Publiques
+| Pages publiques
 |--------------------------------------------------------------------------
 */
 
@@ -37,13 +36,19 @@ Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
 
 Route::middleware('guest')->group(function () {
     Route::get('/inscription', [RegisterController::class, 'show'])->name('register');
-    Route::post('/inscription', [RegisterController::class, 'store']);
+    Route::post('/inscription', [RegisterController::class, 'store'])->name('register.store');
     Route::get('/connexion', [LoginController::class, 'show'])->name('login');
-    Route::post('/connexion', [LoginController::class, 'store']);
+    Route::post('/connexion', [LoginController::class, 'store'])->name('login.store');
     Route::get('/mot-de-passe-oublie', [LoginController::class, 'showForgot'])->name('password.request');
     Route::post('/mot-de-passe-oublie', [LoginController::class, 'sendResetLink'])->name('password.email');
     Route::get('/reinitialiser-mot-de-passe/{token}', [LoginController::class, 'showReset'])->name('password.reset');
     Route::post('/reinitialiser-mot-de-passe', [LoginController::class, 'reset'])->name('password.update');
+
+    // OTP Telephone
+    Route::get('/verification-telephone', [PhoneVerificationController::class, 'show'])->name('verify.phone.show');
+    Route::post('/verification-telephone', [PhoneVerificationController::class, 'verify'])->name('verify.phone.verify');
+    Route::post('/verification-telephone/renvoyer', [PhoneVerificationController::class, 'resend'])->name('verify.phone.resend');
+    Route::post('/verification-telephone/envoyer', [PhoneVerificationController::class, 'send'])->name('verify.phone.send');
 });
 
 /*
@@ -53,22 +58,25 @@ Route::middleware('guest')->group(function () {
 */
 
 Route::middleware('auth')->group(function () {
-    Route::post('/deconnexion', [LoginController::class, 'logout'])->name('logout');
+    Route::post('/deconnexion', LogoutController::class)->name('logout');
     Route::get('/verification-email', [RegisterController::class, 'showVerify'])->name('verification.notice');
-    Route::get('/verification-email/{id}/{hash}', [RegisterController::class, 'verify'])->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
-    Route::post('/verification-email/renvoyer', [RegisterController::class, 'resend'])->middleware('throttle:6,1')->name('verification.send');
+    Route::get('/verification-email/{id}/{hash}', [RegisterController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+    Route::post('/verification-email/renvoyer', [RegisterController::class, 'resend'])
+        ->middleware('throttle:6,1')->name('verification.send');
 });
 
 /*
 |--------------------------------------------------------------------------
-| KYC (Auth)
+| KYC (Auth) - Routes compatibles navigation existante
 |--------------------------------------------------------------------------
 */
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/kyc', [ProfileController::class, 'showKyc'])->name('kyc');
-    Route::post('/kyc', [ProfileController::class, 'storeKyc'])->name('kyc.store');
-    Route::get('/kyc/verification', [ProfileController::class, 'showKycVerification'])->name('kyc.verification');
+    Route::get('/kyc', [KycController::class, 'show'])->name('kyc');
+    Route::get('/kyc/show', [KycController::class, 'show'])->name('kyc.show');
+    Route::post('/kyc', [KycController::class, 'store'])->name('kyc.store');
+    Route::get('/kyc/verification', [KycController::class, 'verification'])->name('kyc.verification');
 });
 
 /*
@@ -103,6 +111,7 @@ Route::middleware(['auth', 'kyc'])->group(function () {
     Route::post('/transactions/{transaction}/livrer', [TransactionController::class, 'deliver'])->name('transactions.deliver');
     Route::post('/transactions/{transaction}/confirmer', [TransactionController::class, 'complete'])->name('transactions.complete');
     Route::post('/transactions/{transaction}/annuler', [TransactionController::class, 'cancel'])->name('transactions.cancel');
+    Route::get('/transactions/{transaction}/payer', [TransactionController::class, 'pay'])->name('transactions.pay');
 
     // Litiges
     Route::post('/transactions/{transaction}/litige', [DisputeController::class, 'store'])->name('disputes.store');
@@ -156,23 +165,23 @@ Route::get('/paiement/callback/{provider}/{transaction}', [PaymentController::cl
 */
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('dashboard');
 
     // Utilisateurs
-    Route::get('/utilisateurs', [AdminUserController::class, 'index'])->name('users.index');
-    Route::get('/utilisateurs/{user}', [AdminUserController::class, 'show'])->name('users.show');
-    Route::post('/utilisateurs/{user}/valider-kyc', [AdminUserController::class, 'validateKyc'])->name('users.validate-kyc');
-    Route::post('/utilisateurs/{user}/suspendre', [AdminUserController::class, 'suspend'])->name('users.suspend');
+    Route::get('/utilisateurs', [\App\Http\Controllers\Admin\AdminUserController::class, 'index'])->name('users.index');
+    Route::get('/utilisateurs/{user}', [\App\Http\Controllers\Admin\AdminUserController::class, 'show'])->name('users.show');
+    Route::post('/utilisateurs/{user}/valider-kyc', [\App\Http\Controllers\Admin\AdminUserController::class, 'validateKyc'])->name('users.validate-kyc');
+    Route::post('/utilisateurs/{user}/suspendre', [\App\Http\Controllers\Admin\AdminUserController::class, 'suspend'])->name('users.suspend');
 
     // Transactions
-    Route::get('/transactions', [AdminTransactionController::class, 'index'])->name('transactions.index');
-    Route::get('/transactions/{transaction}', [AdminTransactionController::class, 'show'])->name('transactions.show');
-    Route::post('/transactions/{transaction}/liberer', [AdminTransactionController::class, 'release'])->name('transactions.release');
-    Route::post('/transactions/{transaction}/rembourser', [AdminTransactionController::class, 'refund'])->name('transactions.refund');
+    Route::get('/transactions', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions/{transaction}', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'show'])->name('transactions.show');
+    Route::post('/transactions/{transaction}/liberer', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'release'])->name('transactions.release');
+    Route::post('/transactions/{transaction}/rembourser', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'refund'])->name('transactions.refund');
 
     // Litiges
-    Route::get('/litiges', [AdminDisputeController::class, 'index'])->name('disputes.index');
-    Route::get('/litiges/{dispute}', [AdminDisputeController::class, 'show'])->name('disputes.show');
-    Route::post('/litiges/{dispute}/arbitrer', [AdminDisputeController::class, 'arbitrate'])->name('disputes.arbitrate');
-    Route::post('/litiges/{dispute}/fermer', [AdminDisputeController::class, 'close'])->name('disputes.close');
+    Route::get('/litiges', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'index'])->name('disputes.index');
+    Route::get('/litiges/{dispute}', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'show'])->name('disputes.show');
+    Route::post('/litiges/{dispute}/arbitrer', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'arbitrate'])->name('disputes.arbitrate');
+    Route::post('/litiges/{dispute}/fermer', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'close'])->name('disputes.close');
 });

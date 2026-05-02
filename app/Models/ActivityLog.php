@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ActivityLog extends Model
 {
@@ -14,32 +13,50 @@ class ActivityLog extends Model
         'user_id',
         'action',
         'description',
+        'entity_type',
+        'entity_id',
+        'details',
         'ip_address',
         'user_agent',
-        'metadata',
     ];
 
     protected $casts = [
-        'metadata' => 'array',
+        'entity_id' => 'integer',
     ];
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Helper pour logger une action
-     */
-    public static function log(string $action, $subject = null, $user = null, array $metadata = []): self
+    public function entity()
     {
-        return self::create([
-            'user_id' => $user?->id,
+        return $this->morphTo();
+    }
+
+    /**
+     * Log une action avec toutes les infos automatiques.
+     */
+    public static function log(string $action, $entity = null, ?User $user = null, string $description = null): self
+    {
+        $data = [
             'action' => $action,
-            'description' => $subject ? class_basename($subject) . ' #' . $subject->id : null,
+            'description' => $description ?? $action,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
-            'metadata' => array_merge($metadata, $subject ? ['subject_id' => $subject->id, 'subject_type' => get_class($subject)] : []),
-        ]);
+        ];
+
+        if ($user) {
+            $data['user_id'] = $user->id;
+        } elseif (auth()->check()) {
+            $data['user_id'] = auth()->id();
+        }
+
+        if ($entity) {
+            $data['entity_type'] = get_class($entity);
+            $data['entity_id'] = $entity->id;
+        }
+
+        return self::create($data);
     }
 }
