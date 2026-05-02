@@ -1,75 +1,113 @@
 <?php
 
 return [
+    /*
+    |--------------------------------------------------------------------------
+    | Parametres generaux PayXora
+    |--------------------------------------------------------------------------
+    */
+
+    // Taux de commission (pourcentage)
+    'commission_rate' => env('PAYXORA_COMMISSION_RATE', 3.0),
+
+    // Commission minimum (XOF)
+    'commission_minimum' => env('PAYXORA_COMMISSION_MIN', 100),
+
+    // Commission maximum (XOF)
+    'commission_maximum' => env('PAYXORA_COMMISSION_MAX', 50000),
+
+    // Delai de confirmation livraison (heures)
+    'dispute_response_hours' => env('PAYXORA_DISPUTE_HOURS', 48),
+
+    // Delai d'expiration des transactions non payees (heures)
+    'transaction_expiry_hours' => env('PAYXORA_TRANSACTION_EXPIRY_HOURS', 72),
 
     /*
     |--------------------------------------------------------------------------
-    | Commission & Tarification
+    | Provider de paiement par defaut
     |--------------------------------------------------------------------------
+    |
+    | En environnement local/testing, 'fake' est utilise automatiquement
+    | si cette valeur est vide.
+    |
+    | Valeurs possibles : 'tmoney', 'moov', 'card', 'fake'
     */
-    'commission_rate' => env('PAYXORA_COMMISSION_RATE', 3.0), // % par transaction
-    'commission_minimum' => env('PAYXORA_COMMISSION_MIN', 100), // FCFA
-    'commission_maximum' => env('PAYXORA_COMMISSION_MAX', 50000), // FCFA
-    'withdrawal_fee' => env('PAYXORA_WITHDRAWAL_FEE', 500), // FCFA
-    'min_transaction_amount' => env('PAYXORA_MIN_AMOUNT', 1000), // FCFA
-    'max_transaction_amount' => env('PAYXORA_MAX_AMOUNT', 10000000), // FCFA
+    'default_payment_provider' => env('PAYXORA_DEFAULT_PROVIDER', ''),
 
     /*
     |--------------------------------------------------------------------------
-    | Delais & Sequestre
+    | Configuration des providers de paiement
     |--------------------------------------------------------------------------
     */
-    'escrow_hold_days' => env('PAYXORA_ESCROW_DAYS', 2), // jours avant auto-liberation
-    'dispute_response_hours' => env('PAYXORA_DISPUTE_HOURS', 48), // heures pour repondre
-    'confirmation_deadline_hours' => env('PAYXORA_CONFIRM_HOURS', 48), // heures pour confirmer reception
-    'auto_expire_hours' => env('PAYXORA_EXPIRE_HOURS', 72), // heures avant annulation auto si non payee
 
-    /*
-    |--------------------------------------------------------------------------
-    | Mobile Money Providers
-    |--------------------------------------------------------------------------
-    */
     'payment_providers' => [
+
+        /*
+        | TMoney (Togocel)
+        */
         'tmoney' => [
-            'name' => 'TMoney (Togocom)',
-            'enabled' => env('TMONEY_ENABLED', false),
-            'api_url' => env('TMONEY_API_URL'),
-            'api_key' => env('TMONEY_API_KEY'),
-            'api_secret' => env('TMONEY_API_SECRET'),
+            'api_url'    => env('TMONEY_API_URL', ''),
+            'api_key'    => env('TMONEY_API_KEY', ''),
+            'api_secret' => env('TMONEY_API_SECRET', ''),
+            'sandbox'    => env('TMONEY_SANDBOX', true),
         ],
+
+        /*
+        | Moov Money (Moov Africa Togo)
+        */
         'moov' => [
-            'name' => 'Moov Money',
-            'enabled' => env('MOOV_ENABLED', false),
-            'api_url' => env('MOOV_API_URL'),
-            'api_key' => env('MOOV_API_KEY'),
-            'api_secret' => env('MOOV_API_SECRET'),
+            'api_url'    => env('MOOV_API_URL', ''),
+            'api_key'    => env('MOOV_API_KEY', ''),
+            'api_secret' => env('MOOV_API_SECRET', ''),
+            'sandbox'    => env('MOOV_SANDBOX', true),
+        ],
+
+        /*
+        | Carte Bancaire (Stripe, Flutterwave, CinetPay, PayDunya)
+        |
+        | Le provider actif est determine par 'provider'.
+        | Quand tu integres un provider reel, ajoute sa config ici.
+        */
+        'card' => [
+            'provider'       => env('CARD_PROVIDER', 'stripe'), // stripe, flutterwave, cinetpay, paydunya
+            'api_key'        => env('CARD_API_KEY', ''),
+            'api_secret'     => env('CARD_API_SECRET', ''),
+            'webhook_secret' => env('CARD_WEBHOOK_SECRET', ''),
+            'sandbox'        => env('CARD_SANDBOX', true),
+        ],
+
+        /*
+        | Fake Mobile Money (dev uniquement)
+        |
+        | Ce provider simule TOUJOURS le succes.
+        | Ne jamais activer en production.
+        */
+        'fake' => [
+            'enabled' => env('FAKE_PAYMENT_ENABLED', false),
         ],
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | KYC Configuration
+    | Configuration Brevo (emails)
     |--------------------------------------------------------------------------
     */
-    'kyc' => [
-        'required' => true,
-        'auto_approve' => env('PAYXORA_KYC_AUTO_APPROVE', false),
-        'id_types' => ['passport', 'cni', 'driving_license'],
-        'max_file_size' => 2048, // KB
-        'allowed_extensions' => ['jpg', 'jpeg', 'png', 'pdf'],
+
+    'brevo' => [
+        'api_key' => env('BREVO_API_KEY', ''),
+        'from_email' => env('BREVO_FROM_EMAIL', 'noreply@payxora.tg'),
+        'from_name' => env('BREVO_FROM_NAME', 'PayXora'),
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Notifications
+    | Configuration KYC
     |--------------------------------------------------------------------------
     */
-    'notifications' => [
-        'email_enabled' => env('PAYXORA_EMAIL_NOTIFICATIONS', true),
-        'sms_enabled' => env('PAYXORA_SMS_NOTIFICATIONS', false),
-        'brevo_api_key' => env('BREVO_API_KEY'),
-        'brevo_sender_email' => env('BREVO_SENDER_EMAIL', 'noreply@payxora.tg'),
-        'brevo_sender_name' => env('BREVO_SENDER_NAME', 'PayXora'),
+
+    'kyc' => [
+        'required' => env('KYC_REQUIRED', true),
+        'auto_approve' => env('KYC_AUTO_APPROVE', false), // En dev uniquement
     ],
 
     /*
@@ -77,10 +115,15 @@ return [
     | Securite
     |--------------------------------------------------------------------------
     */
+
     'security' => [
-        'max_login_attempts' => 5,
-        'lockout_duration' => 15, // minutes
-        'session_timeout' => 120, // minutes
-        'require_2fa' => env('PAYXORA_REQUIRE_2FA', false),
+        // Nombre max de tentatives de paiement par transaction
+        'max_payment_attempts' => 3,
+
+        // Nombre max de transactions par heure par utilisateur
+        'max_transactions_per_hour' => 10,
+
+        // IPs autorisees pour les webhooks (laisser vide pour tout accepter)
+        'webhook_allowed_ips' => [],
     ],
 ];

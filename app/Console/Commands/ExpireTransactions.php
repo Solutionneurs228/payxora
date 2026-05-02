@@ -4,28 +4,45 @@ namespace App\Console\Commands;
 
 use App\Enums\TransactionStatus;
 use App\Models\Transaction;
-use App\Services\EscrowService;
 use Illuminate\Console\Command;
 
 class ExpireTransactions extends Command
 {
-    protected $signature = 'transactions:expire';
-    protected $description = 'Annule automatiquement les transactions non payees apres le delai';
+    protected $signature = 'payxora:expire-transactions {--dry-run}';
+    protected $description = 'Annule les transactions non payees apres le delai d\'expiration';
 
-    public function handle(EscrowService $escrowService): int
+    public function handle(): int
     {
-        $expired = Transaction::where('status', TransactionStatus::PENDING_PAYMENT)
-            ->where('created_at', '<', now()->subHours(config('payxora.auto_expire_hours', 72)))
-            ->get();
+        $dryRun = $this->option('dry-run');
+        $expiryHours = config('payxora.transaction_expiry_hours', 72);
+        $cutoffDate = now()->subHours($expiryHours);
 
-        $count = 0;
-        foreach ($expired as $transaction) {
-            $escrowService->cancel($transaction);
-            $count++;
-            $this->info("Transaction {$transaction->reference} annulee (expiration)");
+        $this->info("Recherche des transactions expirees (plus de {$expiryHours}h en attente)...");
+
+        $query = Transaction::where('status', TransactionStatus::PENDING_PAYMENT)
+            ->where('created_at', '<', $cutoffDate);
+
+        $count = $query->count();
+
+        if ($count === 0) {
+            $this->info('Aucune transaction expiree trouvee.');
+            return self::SUCCESS;
         }
 
-        $this->info("{$count} transaction(s) annulee(s)");
-        return 0;
+        $this->warn("{$count} transaction(s) expiree(s) trouvee(s).");
+
+        if ($dryRun) {
+            $this->info('Mode simulation -- aucune modification effectuee.');
+            return self::SUCCESS;
+        }
+
+        $cancelled = 0;
+        foreach ($query->cursor() as $transaction) {
+            $transaction->update(['status' => TransactionStatus::CANCELLED]);
+            $cancelled++;
+        }
+
+        $this->info("{$cancelled} transaction(s) annulee(s).");
+        return self::SUCCESS;
     }
 }
