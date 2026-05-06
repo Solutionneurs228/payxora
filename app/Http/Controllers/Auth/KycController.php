@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\KycRequest;
 use App\Models\KycProfile;
 use App\Services\KycService;
 use App\Services\NotificationService;
@@ -28,8 +29,7 @@ class KycController extends Controller
     {
         $kyc = Auth::user()->kycProfile;
 
-        // Si deja approuve, rediriger vers le dashboard
-        if ($kyc && $kyc->status === 'approved') {
+        if ($kyc && $kyc->isApproved()) {
             return redirect()->route('dashboard')
                 ->with('success', 'Votre compte est deja verifie.');
         }
@@ -40,37 +40,11 @@ class KycController extends Controller
     /**
      * Soumet les informations KYC avec upload de fichiers.
      */
-    public function store(Request $request)
+    public function store(KycRequest $request)
     {
         $user = Auth::user();
 
-        // Supprimer l'ancien KYC si rejete
-        if ($user->kycProfile && $user->kycProfile->status === 'rejected') {
-            $this->deleteKycFiles($user->kycProfile);
-            $user->kycProfile->delete();
-        }
-
-        // Stocker les fichiers
-        $idFrontPath = $request->file('id_front')->store('kyc/' . $user->id . '/id_front', 'private');
-        $idBackPath = $request->hasFile('id_back')
-            ? $request->file('id_back')->store('kyc/' . $user->id . '/id_back', 'private')
-            : null;
-        $selfiePath = $request->file('selfie')->store('kyc/' . $user->id . '/selfie', 'private');
-
-        // Creer le profil KYC
-        $kyc = KycProfile::create([
-            'user_id' => $user->id,
-            'id_type' => $request->id_type,
-            'id_number' => $request->id_number,
-            'id_front_path' => $idFrontPath,
-            'id_back_path' => $idBackPath,
-            'selfie_path' => $selfiePath,
-            'address' => $request->address,
-            'city' => $request->city,
-            'country' => $request->country ?? 'Togo',
-            'status' => 'pending',
-            'submitted_at' => now(),
-        ]);
+        $kyc = $this->kycService->submit($user, $request->validated());
 
         // Notifier l'admin
         $this->notificationService->notifyAdmins(
@@ -95,27 +69,33 @@ class KycController extends Controller
                 ->with('info', 'Veuillez soumettre vos documents de verification.');
         }
 
-        if ($kyc->status === 'approved') {
+        if ($kyc->isApproved()) {
             return redirect()->route('dashboard')
                 ->with('success', 'Votre compte est verifie ! Bienvenue sur PayXora.');
         }
 
-        return view('auth.kyc-verification');
+        return view('auth.kyc-verification', compact('kyc'));
     }
 
     /**
-     * Supprime les fichiers KYC.
+     * Affiche un document KYC securise (admin ou proprietaire uniquement).
      */
-    private function deleteKycFiles(KycProfile $kyc): void
+    public function document(Request $request, string $type, int $id)
     {
-        if ($kyc->id_front_path) {
-            Storage::disk('private')->delete($kyc->id_front_path);
+        $kyc = KycProfile::findOrFail($id);
+        $user = Auth::user();
+
+        // Verifier les permissions
+        if ($kyc->user_id !== $user->id && !$user->isAdmin()) {
+            abort(403, 'Acces non autorise.');
         }
-        if ($kyc->id_back_path) {
-            Storage::disk('private')->delete($kyc->id_back_path);
+
+        $path = $this->kycService->getDocument($kyc, $type);
+
+        if (!$path) {
+            abort(404, 'Document non trouve.');
         }
-        if ($kyc->selfie_path) {
-            Storage::disk('private')->delete($kyc->selfie_path);
-        }
+
+        return response()->file($path);
     }
 }
