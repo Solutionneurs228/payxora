@@ -19,13 +19,13 @@ enum TransactionStatus: string
         return match($this) {
             self::DRAFT => 'Brouillon',
             self::PENDING_PAYMENT => 'En attente de paiement',
-            self::FUNDED => 'Paye — En sequestre',
-            self::SHIPPED => 'Expedie',
-            self::DELIVERED => 'Livre',
-            self::COMPLETED => 'Termine',
+            self::FUNDED => 'Payé - En séquestre',
+            self::SHIPPED => 'Expédié',
+            self::DELIVERED => 'Livré',
+            self::COMPLETED => 'Terminé',
             self::DISPUTED => 'En litige',
-            self::REFUNDED => 'Rembourse',
-            self::CANCELLED => 'Annule',
+            self::REFUNDED => 'Remboursé',
+            self::CANCELLED => 'Annulé',
         };
     }
 
@@ -39,26 +39,21 @@ enum TransactionStatus: string
             self::DELIVERED => 'purple',
             self::COMPLETED => 'green',
             self::DISPUTED => 'red',
-            self::REFUNDED => 'slate',
+            self::REFUNDED => 'orange',
             self::CANCELLED => 'gray',
         };
     }
 
-    public function canTransitionTo(self $target): bool
+    public function canTransitionTo(self $newStatus): bool
     {
         return match($this) {
-            self::DRAFT => in_array($target, [self::PENDING_PAYMENT, self::CANCELLED]),
-            self::PENDING_PAYMENT => in_array($target, [self::FUNDED, self::CANCELLED]),
-            self::FUNDED => in_array($target, [self::SHIPPED, self::CANCELLED, self::DISPUTED]),
-            self::SHIPPED => in_array($target, [self::DELIVERED, self::DISPUTED]),
-            self::DELIVERED => in_array($target, [self::COMPLETED, self::DISPUTED]),
-            self::DISPUTED => in_array($target, [self::COMPLETED, self::REFUNDED]),
-            self::COMPLETED, self::REFUNDED, self::CANCELLED => false,
+            self::DRAFT => in_array($newStatus, [self::PENDING_PAYMENT, self::CANCELLED]),
+            self::PENDING_PAYMENT => in_array($newStatus, [self::FUNDED, self::CANCELLED]),
+            self::FUNDED => in_array($newStatus, [self::SHIPPED, self::CANCELLED]),
+            self::SHIPPED => in_array($newStatus, [self::DELIVERED, self::DISPUTED]),
+            self::DELIVERED => in_array($newStatus, [self::COMPLETED, self::DISPUTED]),
+            self::DISPUTED => in_array($newStatus, [self::COMPLETED, self::REFUNDED]),
+            default => false,
         };
-    }
-
-    public function isFinal(): bool
-    {
-        return in_array($this, [self::COMPLETED, self::REFUNDED, self::CANCELLED]);
     }
 }

@@ -2,13 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\DisputeStatus;
-use App\Enums\KycStatus;
-use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
-use App\Models\Dispute;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Dispute;
 
 class AdminController extends Controller
 {
@@ -16,33 +13,20 @@ class AdminController extends Controller
     {
         $stats = [
             'total_users' => User::count(),
-            'active_users' => User::where('is_active', true)->count(),
-            'pending_kyc' => User::whereHas('kycProfile', function ($q) {
-                $q->where('status', KycStatus::PENDING);
-            })->count(),
+            'verified_users' => User::where('kyc_status', 'verified')->count(),
+            'pending_kyc' => User::where('kyc_status', 'pending')->count(),
             'total_transactions' => Transaction::count(),
-            'pending_transactions' => Transaction::where('status', TransactionStatus::PENDING_PAYMENT)->count(),
-            'active_escrow' => Transaction::whereIn('status', [
-                TransactionStatus::FUNDED,
-                TransactionStatus::SHIPPED,
-                TransactionStatus::DELIVERED,
-            ])->count(),
-            'completed_transactions' => Transaction::where('status', TransactionStatus::COMPLETED)->count(),
-            'open_disputes' => Dispute::where('status', DisputeStatus::OPEN)->count(),
-            'total_volume' => Transaction::where('status', TransactionStatus::COMPLETED)->sum('amount'),
+            'active_transactions' => Transaction::active()->count(),
+            'completed_transactions' => Transaction::completed()->count(),
+            'total_volume' => Transaction::completed()->sum('amount'),
+            'open_disputes' => Dispute::where('status', 'open')->count(),
+            'total_commissions' => Transaction::completed()->sum('commission_amount'),
         ];
 
-        $recent_transactions = Transaction::with(['seller', 'buyer'])
-            ->latest()
-            ->limit(10)
-            ->get();
+        $recentTransactions = Transaction::latest()->limit(10)->get();
+        $recentUsers = User::latest()->limit(10)->get();
+        $openDisputes = Dispute::where('status', 'open')->with('transaction')->latest()->limit(10)->get();
 
-        $recent_disputes = Dispute::with(['transaction', 'initiator'])
-            ->where('status', DisputeStatus::OPEN)
-            ->latest()
-            ->limit(5)
-            ->get();
-
-        return view('admin.dashboard', compact('stats', 'recent_transactions', 'recent_disputes'));
+        return view('admin.dashboard', compact('stats', 'recentTransactions', 'recentUsers', 'openDisputes'));
     }
 }

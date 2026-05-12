@@ -5,7 +5,7 @@ namespace App\Enums;
 enum PaymentStatus: string
 {
     case PENDING = 'pending';
-    case COMPLETED = 'completed';
+    case SUCCESS = 'success';
     case FAILED = 'failed';
     case REFUNDED = 'refunded';
 
@@ -13,9 +13,9 @@ enum PaymentStatus: string
     {
         return match($this) {
             self::PENDING => 'En attente',
-            self::COMPLETED => 'Effectue',
-            self::FAILED => 'Echoue',
-            self::REFUNDED => 'Rembourse',
+            self::SUCCESS => 'Réussi',
+            self::FAILED => 'Échoué',
+            self::REFUNDED => 'Remboursé',
         };
     }
 
@@ -23,9 +23,9 @@ enum PaymentStatus: string
     {
         return match($this) {
             self::PENDING => 'yellow',
-            self::COMPLETED => 'green',
+            self::SUCCESS => 'green',
             self::FAILED => 'red',
-            self::REFUNDED => 'slate',
+            self::REFUNDED => 'orange',
         };
     }
 }

@@ -2,56 +2,77 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\DisputeStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Dispute;
-use App\Services\DisputeService;
+use App\Models\Notification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DisputeAdminController extends Controller
 {
-    public function __construct(
-        private DisputeService $disputeService
-    ) {}
-
     public function index()
     {
-        $disputes = Dispute::with(['transaction.seller', 'transaction.buyer', 'initiator'])
-            ->latest()
-            ->paginate(20);
-
+        $disputes = Dispute::with(['transaction', 'opener'])->latest()->paginate(20);
         return view('admin.disputes.index', compact('disputes'));
     }
 
     public function show(Dispute $dispute)
     {
-        $dispute->load(['transaction', 'messages.user', 'initiator']);
-
+        $dispute->load(['transaction.seller', 'transaction.buyer', 'opener', 'messages.user']);
         return view('admin.disputes.show', compact('dispute'));
     }
 
     public function arbitrate(Request $request, Dispute $dispute)
     {
         $validated = $request->validate([
-            'resolution' => ['required', 'in:refund_buyer,release_seller'],
-            'notes' => ['nullable', 'string', 'max:2000'],
+            'resolution' => ['required', 'in:buyer,seller'],
+            'notes' => ['required', 'string', 'min:10'],
         ]);
 
-        $this->disputeService->arbitrate(
-            $dispute,
-            $validated['resolution'],
-            $validated['notes'] ?? null
-        );
+        $transaction = $dispute->transaction;
 
-        return redirect()->route('admin.disputes.show', $dispute)
-            ->with('success', 'Litige arbitre avec succes.');
+        if ($validated['resolution'] === 'buyer') {
+            $transaction->update(['status' => 'refunded']);
+            if ($transaction->escrow) {
+                $transaction->escrow->update(['status' => 'refunded', 'refunded_at' => now()]);
+            }
+            $winnerId = $transaction->buyer_id;
+            $message = 'Le litige a ete resolu en votre faveur. Remboursement effectue.';
+        } else {
+            $transaction->update(['status' => 'completed', 'completed_at' => now()]);
+            if ($transaction->escrow) {
+                $transaction->escrow->update(['status' => 'released', 'released_at' => now()]);
+            }
+            $winnerId = $transaction->seller_id;
+            $message = 'Le litige a ete resolu en votre faveur. Paiement libere.';
+        }
+
+        $dispute->update([
+            'status' => $validated['resolution'] === 'buyer' ? 'resolved_buyer' : 'resolved_seller',
+            'resolved_by' => Auth::id(),
+            'resolution_notes' => $validated['notes'],
+            'resolved_at' => now(),
+        ]);
+
+        Notification::create([
+            'user_id' => $winnerId,
+            'type' => 'dispute_resolved',
+            'title' => 'Litige resolu',
+            'message' => $message,
+            'link' => route('disputes.show', $dispute),
+        ]);
+
+        return back()->with('success', 'Arbitrage effectue.');
     }
 
-    public function close(Dispute $dispute)
+    public function close(Request $request, Dispute $dispute)
     {
-        $this->disputeService->close($dispute);
+        $dispute->update([
+            'status' => 'closed',
+            'resolved_by' => Auth::id(),
+            'resolved_at' => now(),
+        ]);
 
-        return redirect()->route('admin.disputes.index')
-            ->with('success', 'Litige ferme.');
+        return back()->with('success', 'Litige ferme.');
     }
 }

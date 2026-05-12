@@ -4,33 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EscrowAccount extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'balance',
-        'currency',
-        'status',
-        'last_transaction_at',
+        'transaction_id', 'amount_held', 'status', 'released_at', 'refunded_at',
     ];
 
     protected $casts = [
-        'balance' => 'decimal:2',
-        'last_transaction_at' => 'datetime',
+        'amount_held' => 'decimal:2',
+        'released_at' => 'datetime',
+        'refunded_at' => 'datetime',
     ];
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function transactions(): HasMany
-    {
-        return $this->hasMany(Transaction::class);
-    }
+    public function transaction() { return $this->belongsTo(Transaction::class); }
 }

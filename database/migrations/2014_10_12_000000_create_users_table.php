@@ -10,15 +10,13 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('first_name');
-            $table->string('last_name');
+            $table->string('name');
+            // $table->string('last_name');
             $table->string('email')->unique();
             $table->string('phone')->unique();
             $table->string('password');
-            // $table->enum('role', ['buyer', 'seller', 'admin'])->default('buyer');
-            $table->string('role')->default('buyer');
-            // $table->enum('kyc_status', ['pending', 'verified', 'rejected'])->default('pending');
-            $table->string('kyc_status')->default('pending');
+            $table->enum('role', ['buyer', 'seller', 'admin'])->default('buyer');
+            $table->enum('kyc_status', ['pending', 'verified', 'rejected'])->default('pending');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('profile_photo')->nullable();
             $table->string('id_document')->nullable();

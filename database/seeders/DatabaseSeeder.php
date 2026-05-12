@@ -2,10 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Enums\KycStatus;
-use App\Enums\UserRole;
-use App\Models\User;
 use Illuminate\Database\Seeder;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
@@ -13,60 +11,39 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Admin
-        $admin = User::create([
-            'name' => 'Administrateur PayXora',
+        User::create([
+            'first_name' => 'Admin',
+            'last_name' => 'PayXora',
             'email' => 'admin@payxora.tg',
-            'phone' => '90000001',
+            'phone' => '+22890000000',
             'password' => Hash::make('password'),
-            'role' => UserRole::ADMIN,
+            'role' => 'admin',
+            'kyc_status' => 'verified',
             'is_active' => true,
-            'email_verified_at' => now(),
         ]);
 
-        $admin->kycProfile()->create([
-            'id_type' => 'passport',
-            'id_number' => 'ADMIN001',
-            'status' => KycStatus::APPROVED,
-            'verified_at' => now(),
-            'phone_verified' => true,
-        ]);
-
-        // Vendeur
-        $seller = User::create([
-            'name' => 'Vendeur Demo',
-            'email' => 'seller@payxora.tg',
-            'phone' => '90000002',
+        // Vendeur test
+        User::create([
+            'first_name' => 'Kossi',
+            'last_name' => 'Amedegnato',
+            'email' => 'vendeur@payxora.tg',
+            'phone' => '+22891111111',
             'password' => Hash::make('password'),
-            'role' => UserRole::SELLER,
+            'role' => 'seller',
+            'kyc_status' => 'verified',
             'is_active' => true,
-            'email_verified_at' => now(),
         ]);
 
-        $seller->kycProfile()->create([
-            'id_type' => 'cni',
-            'id_number' => 'CNI123456',
-            'status' => KycStatus::APPROVED,
-            'verified_at' => now(),
-            'phone_verified' => true,
-        ]);
-
-        // Acheteur
-        $buyer = User::create([
-            'name' => 'Acheteur Demo',
-            'email' => 'buyer@payxora.tg',
-            'phone' => '90000003',
+        // Acheteur test
+        User::create([
+            'first_name' => 'Afi',
+            'last_name' => 'Kodjo',
+            'email' => 'acheteur@payxora.tg',
+            'phone' => '+22892222222',
             'password' => Hash::make('password'),
-            'role' => UserRole::BUYER,
+            'role' => 'buyer',
+            'kyc_status' => 'verified',
             'is_active' => true,
-            'email_verified_at' => now(),
-        ]);
-
-        $buyer->kycProfile()->create([
-            'id_type' => 'cni',
-            'id_number' => 'CNI789012',
-            'status' => KycStatus::APPROVED,
-            'verified_at' => now(),
-            'phone_verified' => true,
         ]);
     }
 }

@@ -2,33 +2,27 @@
 
 namespace App\Models;
 
-use App\Enums\UserRole;
-use App\Enums\KycStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name',
-        'first_name',
-        'last_name',
         'email',
         'phone',
         'password',
         'role',
+        'kyc_status',
+        'profile_photo',
+        'id_document',
+        'address',
+        'city',
         'is_active',
-        'email_verified_at',
-        'phone_verified_at',
-        'last_login_at',
-        'last_login_ip',
-        'failed_login_attempts',
-        'locked_until',
     ];
 
     protected $hidden = [
@@ -38,41 +32,57 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'phone_verified_at' => 'datetime',
-        'last_login_at' => 'datetime',
-        'locked_until' => 'datetime',
+        'password' => 'hashed',
         'is_active' => 'boolean',
-        'failed_login_attempts' => 'integer',
-        'role' => UserRole::class,
     ];
 
-    // Accessor pour name (si first_name/last_name existent)
-    public function getNameAttribute($value)
+    // On garde uniquement ce qui est cohérent avec "name"
+    protected $appends = [
+        'initials',
+    ];
+
+    /**
+     * Retourne le nom complet (équivalent direct du champ name)
+     */
+    public function getFullNameAttribute(): string
     {
-        if ($value) {
-            return $value;
-        }
-        $first = $this->attributes['first_name'] ?? '';
-        $last = $this->attributes['last_name'] ?? '';
-        return trim("{$first} {$last}") ?: 'Utilisateur';
+        return $this->name ?? '';
     }
 
-    // Mutator pour name (decompose en first_name/last_name si necessaire)
-    public function setNameAttribute($value)
+    /**
+     * Génère les initiales à partir du champ name
+     */
+    public function getInitialsAttribute(): string
     {
-        $this->attributes['name'] = $value;
-        // Si la DB a first_name/last_name, on les remplit aussi
-        if (Schema::hasColumn('users', 'first_name')) {
-            $parts = explode(' ', $value, 2);
-            $this->attributes['first_name'] = $parts[0] ?? '';
-            $this->attributes['last_name'] = $parts[1] ?? '';
+        if (!$this->name) {
+            return '';
         }
+
+        $words = explode(' ', trim($this->name));
+        $initials = '';
+
+        foreach ($words as $word) {
+            if (!empty($word)) {
+                $initials .= strtoupper(substr($word, 0, 1));
+            }
+        }
+
+        return $initials;
     }
 
-    // Relations
-    public function kycProfile()
+    public function isAdmin(): bool
     {
-        return $this->hasOne(KycProfile::class);
+        return $this->role === 'admin';
+    }
+
+    public function isSeller(): bool
+    {
+        return $this->role === 'seller';
+    }
+
+    public function isKycVerified(): bool
+    {
+        return $this->kyc_status === 'verified';
     }
 
     public function transactionsAsSeller()
@@ -85,79 +95,23 @@ class User extends Authenticatable
         return $this->hasMany(Transaction::class, 'buyer_id');
     }
 
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function disputesOpened()
+    {
+        return $this->hasMany(Dispute::class, 'opened_by');
+    }
+
     public function notifications()
     {
-        return $this->hasMany(Notification::class);
+        return $this->hasMany(Notification::class)->latest();
     }
 
-    public function activityLogs()
+    public function unreadNotifications()
     {
-        return $this->hasMany(ActivityLog::class);
-    }
-
-    public function escrowAccounts()
-    {
-        return $this->hasMany(EscrowAccount::class);
-    }
-
-    // Helpers roles
-    public function isAdmin(): bool
-    {
-        return $this->role === UserRole::ADMIN;
-    }
-
-    public function isSeller(): bool
-    {
-        return $this->role === UserRole::SELLER || $this->role === UserRole::ADMIN;
-    }
-
-    public function isBuyer(): bool
-    {
-        return $this->role === UserRole::BUYER || $this->role === UserRole::ADMIN;
-    }
-
-    // KYC
-    public function isKycVerified(): bool
-    {
-        return $this->kycProfile && $this->kycProfile->status === KycStatus::APPROVED;
-    }
-
-    public function isKycPending(): bool
-    {
-        return $this->kycProfile && $this->kycProfile->status === KycStatus::PENDING;
-    }
-
-    // Securite
-    public function isLocked(): bool
-    {
-        return $this->locked_until && $this->locked_until->isFuture();
-    }
-
-    public function recordFailedLogin(): void
-    {
-        $this->increment('failed_login_attempts');
-
-        if ($this->failed_login_attempts >= config('payxora.security.max_login_attempts', 5)) {
-            $this->update([
-                'locked_until' => now()->addMinutes(config('payxora.security.lockout_duration_minutes', 15)),
-                'failed_login_attempts' => 0,
-            ]);
-        }
-    }
-
-    public function recordSuccessfulLogin(string $ip): void
-    {
-        $this->update([
-            'last_login_at' => now(),
-            'last_login_ip' => $ip,
-            'failed_login_attempts' => 0,
-            'locked_until' => null,
-        ]);
-    }
-
-    // Notifications
-    public function routeNotificationForBrevo()
-    {
-        return $this->email;
+        return $this->notifications()->where('is_read', false);
     }
 }

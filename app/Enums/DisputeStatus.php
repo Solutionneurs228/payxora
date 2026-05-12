@@ -5,6 +5,7 @@ namespace App\Enums;
 enum DisputeStatus: string
 {
     case OPEN = 'open';
+    case MEDIATING = 'mediating';
     case RESOLVED = 'resolved';
     case CLOSED = 'closed';
 
@@ -12,8 +13,9 @@ enum DisputeStatus: string
     {
         return match($this) {
             self::OPEN => 'Ouvert',
-            self::RESOLVED => 'Resolu',
-            self::CLOSED => 'Ferme',
+            self::MEDIATING => 'En médiation',
+            self::RESOLVED => 'Résolu',
+            self::CLOSED => 'Clôturé',
         };
     }
 
@@ -21,6 +23,7 @@ enum DisputeStatus: string
     {
         return match($this) {
             self::OPEN => 'red',
+            self::MEDIATING => 'orange',
             self::RESOLVED => 'green',
             self::CLOSED => 'gray',
         };

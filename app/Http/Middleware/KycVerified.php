@@ -6,14 +6,15 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class AdminMiddleware
+class KycVerified
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        $user = auth()->user();
 
-        if (!$user || !$user->isAdmin()) {
-            abort(403, 'Accès réservé aux administrateurs.');
+        if (!$user || !$user->kyc || $user->kyc->status->value !== 'approved') {
+            return redirect()->route('kyc')
+                ->with('error', 'Validation KYC requise.');
         }
 
         return $next($request);

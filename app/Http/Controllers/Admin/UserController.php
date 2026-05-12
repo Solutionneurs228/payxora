@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\KycStatus;
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -12,47 +10,37 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('kycProfile')
-            ->latest()
-            ->paginate(25);
-
+        $users = User::latest()->paginate(20);
         return view('admin.users.index', compact('users'));
     }
 
     public function show(User $user)
     {
-        $user->load(['kycProfile', 'transactionsAsSeller', 'transactionsAsBuyer', 'activityLogs']);
-
+        $user->load(['transactionsAsSeller', 'transactionsAsBuyer', 'disputesOpened']);
         return view('admin.users.show', compact('user'));
     }
 
     public function validateKyc(Request $request, User $user)
     {
-        if (!$user->kycProfile) {
-            return back()->with('error', 'Cet utilisateur n'a pas soumis de documents KYC.');
-        }
+        $user->update(['kyc_status' => 'verified']);
 
-        $user->kycProfile->update([
-            'status' => KycStatus::APPROVED,
-            'verified_at' => now(),
-            'verified_by' => auth()->id(),
+        \App\Models\Notification::create([
+            'user_id' => $user->id,
+            'type' => 'kyc_approved',
+            'title' => 'KYC approuve',
+            'message' => 'Votre verification d\'identite a ete approuvee.',
+            'link' => route('dashboard'),
         ]);
 
-        return back()->with('success', 'KYC valide pour ' . $user->name);
+        \App\Services\BrevoService::sendKycApproved($user);
+
+        return back()->with('success', 'KYC valide.');
     }
 
     public function suspend(Request $request, User $user)
     {
-        $validated = $request->validate([
-            'reason' => ['nullable', 'string', 'max:500'],
-        ]);
-
-        $user->update([
-            'is_active' => false,
-        ]);
-
-        // TODO: Envoyer notification de suspension
-
-        return back()->with('success', 'Utilisateur suspendu.');
+        $user->update(['is_active' => !$user->is_active]);
+        $status = $user->is_active ? 'active' : 'suspendu';
+        return back()->with('success', "Utilisateur {$status}.");
     }
 }

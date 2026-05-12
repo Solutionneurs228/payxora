@@ -2,85 +2,114 @@
 
 namespace App\Services;
 
-use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Transaction;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class BrevoService
 {
-    private static function sendEmail(string $to, string $subject, string $htmlContent): bool
+    protected static string $apiKey;
+    protected static string $baseUrl = 'https://api.brevo.com/v3';
+
+    public static function init()
     {
-        $apiKey = config('payxora.notifications.brevo_api_key');
+        self::$apiKey = config('services.brevo.key');
+    }
 
-        if (empty($apiKey)) {
-            Log::warning('Brevo API key not configured');
-            return false;
-        }
+    protected static function headers(): array
+    {
+        return [
+            'accept' => 'application/json',
+            'api-key' => self::$apiKey,
+            'content-type' => 'application/json',
+        ];
+    }
 
+    public static function sendEmail(string $to, string $subject, string $htmlContent, ?string $templateId = null)
+    {
         try {
-            $response = Http::withHeaders([
-                'api-key' => $apiKey,
-                'Content-Type' => 'application/json',
-            ])->post('https://api.brevo.com/v3/smtp/email', [
+            $payload = [
                 'sender' => [
-                    'name' => config('payxora.notifications.brevo_sender_name', 'PayXora'),
-                    'email' => config('payxora.notifications.brevo_sender_email', 'noreply@payxora.tg'),
+                    'name' => config('app.name', 'PayXora Togo'),
+                    'email' => config('mail.from.address', 'noreply@payxora.tg'),
                 ],
                 'to' => [['email' => $to]],
                 'subject' => $subject,
                 'htmlContent' => $htmlContent,
-            ]);
+            ];
+
+            if ($templateId) {
+                $payload['templateId'] = (int) $templateId;
+                unset($payload['htmlContent'], $payload['subject']);
+            }
+
+            $response = Http::withHeaders(self::headers())
+                ->post(self::$baseUrl . '/smtp/email', $payload);
 
             return $response->successful();
         } catch (\Exception $e) {
-            Log::error('Brevo email failed', ['error' => $e->getMessage()]);
+            Log::error('Brevo email failed: ' . $e->getMessage());
             return false;
         }
     }
 
-    public static function sendWelcomeEmail(User $user): bool
+    public static function sendWelcomeEmail(User $user)
     {
-        return self::sendEmail(
-            $user->email,
-            'Bienvenue sur PayXora !',
-            "<h1>Bienvenue {$user->name} !</h1><p>Votre compte PayXora a ete cree avec succes. Veuillez completer votre verification KYC pour commencer a utiliser la plateforme.</p>"
-        );
+        $html = view('emails.welcome', ['user' => $user])->render();
+        return self::sendEmail($user->email, 'Bienvenue sur PayXora Togo', $html);
     }
 
-    public static function sendPaymentConfirmed(User $seller, Transaction $transaction): bool
+    public static function sendPaymentReceived(User $user, Transaction $transaction)
     {
-        return self::sendEmail(
-            $seller->email,
-            'Paiement recu — ' . $transaction->product_name,
-            "<h1>Paiement recu !</h1><p>Le paiement pour {$transaction->product_name} a ete effectue. Veuillez expedier le produit.</p><p>Montant : {$transaction->amount} FCFA</p>"
-        );
+        $html = view('emails.payment-received', ['user' => $user, 'transaction' => $transaction])->render();
+        return self::sendEmail($user->email, 'Paiement recu - Expediez votre commande', $html);
     }
 
-    public static function sendPaymentReceipt(User $buyer, Transaction $transaction): bool
+    public static function sendPaymentReleased(User $user, Transaction $transaction)
     {
-        return self::sendEmail(
-            $buyer->email,
-            'Recu de paiement — ' . $transaction->product_name,
-            "<h1>Merci pour votre paiement !</h1><p>Votre paiement de {$transaction->amount} FCFA pour {$transaction->product_name} est confirme. Le vendeur va expedier votre commande.</p>"
-        );
+        $html = view('emails.payment-released', ['user' => $user, 'transaction' => $transaction])->render();
+        return self::sendEmail($user->email, 'Paiement libere', $html);
     }
 
-    public static function sendPaymentReleased(User $seller, Transaction $transaction): bool
+    public static function sendKycApproved(User $user)
     {
-        return self::sendEmail(
-            $seller->email,
-            'Paiement libere — ' . $transaction->product_name,
-            "<h1>Vos fonds ont ete liberes !</h1><p>Le paiement de {$transaction->net_amount} FCFA (net) pour {$transaction->product_name} a ete libere sur votre compte.</p>"
-        );
+        $html = view('emails.kyc-approved', ['user' => $user])->render();
+        return self::sendEmail($user->email, 'Verification KYC approuvee', $html);
     }
 
-    public static function sendDisputeOpened(User $user, Transaction $transaction): bool
+    public static function sendPasswordReset(string $email)
     {
-        return self::sendEmail(
-            $user->email,
-            'Litige ouvert — ' . $transaction->product_name,
-            "<h1>Un litige a ete ouvert</h1><p>Un litige a ete ouvert sur la transaction {$transaction->product_name}. Notre equipe va examiner le cas.</p>"
+        $token = \Illuminate\Support\Str::random(64);
+        \DB::table('password_resets')->updateOrInsert(
+            ['email' => $email],
+            ['token' => \Illuminate\Support\Facades\Hash::make($token), 'created_at' => now()]
         );
+
+        $link = url(route('password.reset', ['token' => $token, 'email' => $email], false));
+        $html = view('emails.password-reset', ['link' => $link])->render();
+
+        return self::sendEmail($email, 'Reinitialisation de mot de passe', $html);
+    }
+
+    public static function sendTransactionNotification(User $user, Transaction $transaction, string $type)
+    {
+        $subjects = [
+            'created' => 'Nouvelle transaction creee',
+            'paid' => 'Paiement confirme',
+            'shipped' => 'Commande expediee',
+            'delivered' => 'Commande livree',
+            'completed' => 'Transaction terminee',
+            'cancelled' => 'Transaction annulee',
+            'disputed' => 'Litige ouvert',
+        ];
+
+        $html = view('emails.transaction-update', [
+            'user' => $user,
+            'transaction' => $transaction,
+            'type' => $type,
+        ])->render();
+
+        return self::sendEmail($user->email, $subjects[$type] ?? 'Mise a jour transaction', $html);
     }
 }
