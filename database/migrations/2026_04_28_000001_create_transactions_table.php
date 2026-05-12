@@ -10,42 +10,24 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->string('reference')->unique(); // REF-PAYX-XXXXXX
-            $table->foreignId('seller_id')->constrained('users');
-            $table->foreignId('buyer_id')->nullable()->constrained('users');
-            $table->string('product_name');
-            $table->text('product_description')->nullable();
+            $table->foreignId('buyer_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('seller_id')->constrained('users')->onDelete('cascade');
+            $table->string('title', 255);
+            $table->text('description')->nullable();
             $table->decimal('amount', 12, 2);
-            $table->decimal('commission_amount', 12, 2)->default(0);
-            $table->decimal('net_amount', 12, 2)->default(0);
-            $table->enum('status', [
-                'pending',      // En attente de paiement
-                'paid',         // Payé, en séquestre
-                'shipped',      // Expédié
-                'delivered',    // Livré, en attente confirmation
-                'completed',    // Terminé, fonds libérés
-                'cancelled',    // Annulé
-                'disputed',     // En litige
-                'refunded'      // Remboursé
-            ])->default('pending');
-            $table->enum('payment_method', ['tmoney', 'moov', 'bank'])->nullable();
-            $table->string('payment_reference')->nullable();
+            $table->string('currency', 3)->default('XOF');
+            $table->string('status', 20)->default('draft');
+            $table->string('tracking_number', 100)->nullable();
+            $table->timestamp('published_at')->nullable();
             $table->timestamp('paid_at')->nullable();
             $table->timestamp('shipped_at')->nullable();
             $table->timestamp('delivered_at')->nullable();
+            $table->timestamp('confirmation_deadline')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->timestamp('cancelled_at')->nullable();
-            $table->text('shipping_address')->nullable();
-            $table->string('tracking_number')->nullable();
-            $table->timestamp('dispute_deadline')->nullable(); // 48h après livraison
-            $table->text('seller_notes')->nullable();
-            $table->text('buyer_notes')->nullable();
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
-
-            $table->index(['seller_id', 'status']);
-            $table->index(['buyer_id', 'status']);
-            $table->index('reference');
         });
     }
 

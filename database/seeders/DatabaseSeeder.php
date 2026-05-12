@@ -12,8 +12,8 @@ class DatabaseSeeder extends Seeder
     {
         // Admin
         User::create([
-            'first_name' => 'Admin',
-            'last_name' => 'PayXora',
+            'name' => 'Admin PayXora',
+            // 'last_name' => 'PayXora',
             'email' => 'admin@payxora.tg',
             'phone' => '+22890000000',
             'password' => Hash::make('password'),
@@ -24,8 +24,7 @@ class DatabaseSeeder extends Seeder
 
         // Vendeur test
         User::create([
-            'first_name' => 'Kossi',
-            'last_name' => 'Amedegnato',
+            'name' => 'Kossi Amedegnato',
             'email' => 'vendeur@payxora.tg',
             'phone' => '+22891111111',
             'password' => Hash::make('password'),
@@ -36,8 +35,7 @@ class DatabaseSeeder extends Seeder
 
         // Acheteur test
         User::create([
-            'first_name' => 'Afi',
-            'last_name' => 'Kodjo',
+            'name' => 'Afi Kodjo',
             'email' => 'acheteur@payxora.tg',
             'phone' => '+22892222222',
             'password' => Hash::make('password'),

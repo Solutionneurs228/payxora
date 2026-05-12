@@ -10,16 +10,15 @@ return new class extends Migration
     {
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->nullable()->constrained();
-            $table->string('action'); // create_transaction, make_payment, confirm_delivery, etc.
-            $table->string('entity_type')->nullable(); // Transaction, Payment, Dispute
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
+            $table->string('action', 100);
+            $table->string('entity_type', 100)->nullable();
             $table->unsignedBigInteger('entity_id')->nullable();
-            $table->text('details')->nullable();
+            $table->text('description')->nullable();
+            $table->json('metadata')->nullable();
             $table->string('ip_address', 45)->nullable();
-            $table->string('user_agent')->nullable();
+            $table->string('user_agent', 255)->nullable();
             $table->timestamps();
-
-            $table->index(['entity_type', 'entity_id']);
         });
     }
 

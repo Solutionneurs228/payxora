@@ -15,7 +15,7 @@ use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\PhoneVerificationController;
 use App\Http\Controllers\Auth\KycController;
 use App\Http\Middleware\RateLimitPayment;
-
+use Illuminate\Support\Facades\Mail;
 /*
 |--------------------------------------------------------------------------
 | Pages publiques
@@ -186,3 +186,18 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/litiges/{dispute}/arbitrer', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'arbitrate'])->name('disputes.arbitrate');
     Route::post('/litiges/{dispute}/fermer', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'close'])->name('disputes.close');
 });
+
+
+
+Route::get('/test-mail', function () {
+
+    Mail::raw('Brevo fonctionne', function ($message) {
+
+        $message->to('test@gmail.com')
+                ->subject('Test Brevo');
+    });
+
+    return 'Mail envoyé';
+});
+
+

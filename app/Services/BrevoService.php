@@ -6,36 +6,77 @@ use App\Models\User;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Config;
 
 class BrevoService
 {
-    protected static string $apiKey;
-    protected static string $baseUrl = 'https://api.brevo.com/v3';
+    private static ?string $apiKey = null;
+    private static string $baseUrl = 'https://api.brevo.com/v3';
 
-    public static function init()
+    /**
+     * Initialise la clé API depuis la config.
+     */
+    public static function init(): void
     {
-        self::$apiKey = config('services.brevo.key');
+        self::$apiKey = Config::get('services.brevo.key');
+
+        if (empty(self::$apiKey)) {
+            Log::warning('[BREVO] Clé API non configurée dans config/services.php');
+        } else {
+            Log::info('[BREVO] Clé API chargée (masquée): ' . substr(self::$apiKey, 0, 10) . '...');
+        }
     }
 
+    /**
+     * Retourne les headers HTTP pour les requêtes Brevo.
+     */
     protected static function headers(): array
     {
+        if (self::$apiKey === null) {
+            self::init();
+        }
+
         return [
-            'accept' => 'application/json',
-            'api-key' => self::$apiKey,
-            'content-type' => 'application/json',
+            'accept'        => 'application/json',
+            'api-key'       => self::$apiKey ?? '',
+            'content-type'  => 'application/json',
         ];
     }
 
-    public static function sendEmail(string $to, string $subject, string $htmlContent, ?string $templateId = null)
+    /**
+     * Envoie un email via l'API Brevo avec LOGGING complet.
+     *
+     * @param string      $to
+     * @param string      $subject
+     * @param string      $htmlContent
+     * @param string|null $templateId
+     * @return bool
+     */
+    public static function sendEmail(string $to, string $subject, string $htmlContent, ?string $templateId = null): bool
     {
         try {
+            // ─── Vérifications préliminaires ─────────────────────────────
+            if (empty(self::$apiKey)) {
+                Log::error('[BREVO] ERREUR: Clé API manquante. Impossible d\'envoyer l\'email.');
+                return false;
+            }
+
+            $senderEmail = config('mail.from.address', 'noreply@payxora.tg');
+            $senderName  = config('mail.from.name', 'PayXora Togo');
+
+            Log::info('[BREVO] Tentative d\'envoi', [
+                'to'      => $to,
+                'subject' => $subject,
+                'sender'  => $senderEmail,
+            ]);
+
             $payload = [
                 'sender' => [
-                    'name' => config('app.name', 'PayXora Togo'),
-                    'email' => config('mail.from.address', 'noreply@payxora.tg'),
+                    'name'  => $senderName,
+                    'email' => $senderEmail,
                 ],
-                'to' => [['email' => $to]],
-                'subject' => $subject,
+                'to'          => [['email' => $to]],
+                'subject'     => $subject,
                 'htmlContent' => $htmlContent,
             ];
 
@@ -47,41 +88,87 @@ class BrevoService
             $response = Http::withHeaders(self::headers())
                 ->post(self::$baseUrl . '/smtp/email', $payload);
 
-            return $response->successful();
+            // ─── LOGGING DETAILLE de la réponse ────────────────────────────
+            $status = $response->status();
+            $body   = $response->body();
+
+            Log::info('[BREVO] Réponse API', [
+                'status' => $status,
+                'body'   => $body,
+            ]);
+
+            if ($status === 201) {
+                Log::info('[BREVO] Email envoyé avec succès à ' . $to);
+                return true;
+            }
+
+            if ($status === 401) {
+                $decoded = json_decode($body, true);
+                $msg = $decoded['message'] ?? 'inconnue';
+                Log::error('[BREVO] ERREUR 401 - Clé API invalide ou compte non vérifié: ' . $msg);
+                Log::error('[BREVO] Vérifiez: 1) Clé API correcte 2) Sender vérifié dans Brevo 3) Compte activé');
+                return false;
+            }
+
+            if ($status === 400) {
+                Log::error('[BREVO] ERREUR 400 - Requête invalide: ' . $body);
+                Log::error('[BREVO] Cause probable: sender email non vérifié ou domaine non authentifié');
+                return false;
+            }
+
+            if ($status === 402) {
+                Log::error('[BREVO] ERREUR 402 - Crédits insuffisants ou compte en attente d\'activation');
+                return false;
+            }
+
+            if ($status === 403) {
+                Log::error('[BREVO] ERREUR 403 - Permissions insuffisantes. Vérifiez la sécurité IP dans Brevo.');
+                return false;
+            }
+
+            Log::error('[BREVO] ERREUR ' . $status . ' inattendue: ' . $body);
+            return false;
+
         } catch (\Exception $e) {
-            Log::error('Brevo email failed: ' . $e->getMessage());
+            Log::error('[BREVO] Exception: ' . $e->getMessage(), [
+                'to' => $to,
+            ]);
             return false;
         }
     }
 
-    public static function sendWelcomeEmail(User $user)
+    /* ------------------------------------------------------------------ */
+    /*  Méthodes helpers                                                  */
+    /* ------------------------------------------------------------------ */
+
+    public static function sendWelcomeEmail(User $user): bool
     {
         $html = view('emails.welcome', ['user' => $user])->render();
         return self::sendEmail($user->email, 'Bienvenue sur PayXora Togo', $html);
     }
 
-    public static function sendPaymentReceived(User $user, Transaction $transaction)
+    public static function sendPaymentReceived(User $user, Transaction $transaction): bool
     {
         $html = view('emails.payment-received', ['user' => $user, 'transaction' => $transaction])->render();
         return self::sendEmail($user->email, 'Paiement recu - Expediez votre commande', $html);
     }
 
-    public static function sendPaymentReleased(User $user, Transaction $transaction)
+    public static function sendPaymentReleased(User $user, Transaction $transaction): bool
     {
         $html = view('emails.payment-released', ['user' => $user, 'transaction' => $transaction])->render();
         return self::sendEmail($user->email, 'Paiement libere', $html);
     }
 
-    public static function sendKycApproved(User $user)
+    public static function sendKycApproved(User $user): bool
     {
         $html = view('emails.kyc-approved', ['user' => $user])->render();
         return self::sendEmail($user->email, 'Verification KYC approuvee', $html);
     }
 
-    public static function sendPasswordReset(string $email)
+    public static function sendPasswordReset(string $email): bool
     {
         $token = \Illuminate\Support\Str::random(64);
-        \DB::table('password_resets')->updateOrInsert(
+        \Illuminate\Support\Facades\DB::table('password_resets')->updateOrInsert(
             ['email' => $email],
             ['token' => \Illuminate\Support\Facades\Hash::make($token), 'created_at' => now()]
         );
@@ -92,22 +179,22 @@ class BrevoService
         return self::sendEmail($email, 'Reinitialisation de mot de passe', $html);
     }
 
-    public static function sendTransactionNotification(User $user, Transaction $transaction, string $type)
+    public static function sendTransactionNotification(User $user, Transaction $transaction, string $type): bool
     {
         $subjects = [
-            'created' => 'Nouvelle transaction creee',
-            'paid' => 'Paiement confirme',
-            'shipped' => 'Commande expediee',
+            'created'   => 'Nouvelle transaction creee',
+            'paid'      => 'Paiement confirme',
+            'shipped'   => 'Commande expediee',
             'delivered' => 'Commande livree',
             'completed' => 'Transaction terminee',
             'cancelled' => 'Transaction annulee',
-            'disputed' => 'Litige ouvert',
+            'disputed'  => 'Litige ouvert',
         ];
 
         $html = view('emails.transaction-update', [
-            'user' => $user,
+            'user'        => $user,
             'transaction' => $transaction,
-            'type' => $type,
+            'type'        => $type,
         ])->render();
 
         return self::sendEmail($user->email, $subjects[$type] ?? 'Mise a jour transaction', $html);

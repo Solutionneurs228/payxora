@@ -10,15 +10,17 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('transaction_id')->constrained();
-            $table->foreignId('user_id')->constrained(); // payeur
-            $table->enum('method', ['tmoney', 'moov', 'bank']);
+            $table->foreignId('transaction_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('provider', 50);
+            $table->string('provider_reference', 255)->nullable();
+            $table->string('method', 20)->default('mobile_money');
+            $table->json('provider_response')->nullable();
             $table->decimal('amount', 12, 2);
-            $table->decimal('fees', 12, 2)->default(0);
-            $table->string('provider_reference')->nullable(); // ref chez TMoney/Moov
-            $table->enum('status', ['pending', 'processing', 'success', 'failed', 'refunded'])->default('pending');
-            $table->text('provider_response')->nullable();
+            $table->string('currency', 3)->default('XOF');
+            $table->string('status', 20)->default('pending');
             $table->timestamp('processed_at')->nullable();
+            $table->timestamp('refunded_at')->nullable();
             $table->timestamps();
         });
     }

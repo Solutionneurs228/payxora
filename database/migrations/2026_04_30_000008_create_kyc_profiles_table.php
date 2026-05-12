@@ -10,14 +10,21 @@ return new class extends Migration
     {
         Schema::create('kyc_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->unique()->constrained()->onDelete('cascade');
-            $table->enum('id_type', ['cni', 'passport', 'residence'])->default('cni');
-            $table->string('id_number');
-            $table->string('id_photo_path');
-            $table->string('selfie_path');
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->timestamp('verified_at')->nullable();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('full_name');
+            $table->date('birth_date');
+            $table->string('nationality');
+            $table->string('id_type')->nullable();
+            $table->string('id_number')->nullable();
+            $table->text('address')->nullable();
+            $table->string('id_front_path')->nullable();
+            $table->string('id_back_path')->nullable();
+            $table->string('selfie_path')->nullable();
+            $table->string('status')->default('not_submitted');
             $table->text('rejection_reason')->nullable();
+            $table->boolean('phone_verified')->default(false);
+            $table->timestamp('submitted_at')->nullable();
+            $table->timestamp('verified_at')->nullable();
             $table->timestamps();
         });
     }
