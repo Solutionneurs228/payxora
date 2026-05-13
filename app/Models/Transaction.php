@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
@@ -12,38 +14,40 @@ class Transaction extends Model
 
     protected $fillable = [
         'reference',
-        'seller_id',
         'buyer_id',
-        'product_name',
-        'product_description',
+        'seller_id',
+        'title',
+        'description',
         'amount',
         'commission_amount',
         'net_amount',
+        'currency',
         'status',
-        'payment_method',
-        'payment_reference',
+        'tracking_number',
+        'published_at',
         'paid_at',
         'shipped_at',
         'delivered_at',
+        'confirmation_deadline',
         'completed_at',
         'cancelled_at',
-        'shipping_address',
-        'tracking_number',
         'dispute_deadline',
-        'seller_notes',
-        'buyer_notes',
+        'expires_at',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'commission_amount' => 'decimal:2',
         'net_amount' => 'decimal:2',
+        'published_at' => 'datetime',
         'paid_at' => 'datetime',
         'shipped_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'confirmation_deadline' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'dispute_deadline' => 'datetime',
+        'expires_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -57,44 +61,29 @@ class Transaction extends Model
         });
     }
 
-    public function seller()
+    public function seller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'seller_id');
     }
 
-    public function buyer()
+    public function buyer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'buyer_id');
     }
 
-    public function payment()
+    public function payment(): HasOne
     {
         return $this->hasOne(Payment::class);
     }
 
-    public function escrow()
+    public function escrow(): HasOne
     {
         return $this->hasOne(EscrowAccount::class);
     }
 
-    public function dispute()
+    public function dispute(): HasOne
     {
         return $this->hasOne(Dispute::class);
-    }
-
-    public function scopePending($query)
-    {
-        return $query->where('status', 'pending');
-    }
-
-    public function scopeActive($query)
-    {
-        return $query->whereIn('status', ['paid', 'shipped', 'delivered', 'disputed']);
-    }
-
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', 'completed');
     }
 
     public function isPending(): bool { return $this->status === 'pending'; }
@@ -103,6 +92,7 @@ class Transaction extends Model
     public function isDelivered(): bool { return $this->status === 'delivered'; }
     public function isCompleted(): bool { return $this->status === 'completed'; }
     public function isDisputed(): bool { return $this->status === 'disputed'; }
+    public function isCancelled(): bool { return $this->status === 'cancelled'; }
 
     public function canBeCancelled(): bool
     {
@@ -111,7 +101,7 @@ class Transaction extends Model
 
     public function canOpenDispute(): bool
     {
-        return in_array($this->status, ['shipped', 'delivered']) 
+        return in_array($this->status, ['shipped', 'delivered'])
             && $this->dispute_deadline && $this->dispute_deadline->isFuture();
     }
 

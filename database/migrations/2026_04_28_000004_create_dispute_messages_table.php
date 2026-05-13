@@ -10,11 +10,10 @@ return new class extends Migration
     {
         Schema::create('dispute_messages', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('dispute_id')->constrained();
-            $table->foreignId('user_id')->constrained();
+            $table->foreignId('dispute_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->text('message');
             $table->string('attachment')->nullable();
-            $table->boolean('is_admin')->default(false);
             $table->timestamps();
         });
     }

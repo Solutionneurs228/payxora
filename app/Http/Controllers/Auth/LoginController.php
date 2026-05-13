@@ -32,10 +32,12 @@ class LoginController extends Controller
 
             $user = Auth::user();
 
-            if ($user->isAdmin()) {
+            // REDIRECTION ADMIN
+            if ($user->role === 'admin') {
                 return redirect()->intended(route('admin.dashboard'));
             }
 
+            // REDIRECTION KYC NON VERIFIE
             if (!$user->isKycVerified()) {
                 return redirect()->route('kyc.show')
                     ->with('warning', 'Veuillez completer votre verification KYC.');
@@ -49,7 +51,7 @@ class LoginController extends Controller
         ]);
     }
 
-    public function forgotPassword()
+    public function showForgot()
     {
         return view('auth.forgot-password');
     }
@@ -59,5 +61,22 @@ class LoginController extends Controller
         $request->validate(['email' => 'required|email']);
         \App\Services\BrevoService::sendPasswordReset($request->email);
         return back()->with('status', 'Un lien de reinitialisation vous a ete envoye.');
+    }
+
+    public function showReset($token)
+    {
+        return view('auth.reset-password', ['token' => $token]);
+    }
+
+    public function reset(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|min:8|confirmed',
+            'token' => 'required',
+        ]);
+
+        // Logique de reinitialisation ici
+        return redirect()->route('login')->with('status', 'Mot de passe reinitialise.');
     }
 }

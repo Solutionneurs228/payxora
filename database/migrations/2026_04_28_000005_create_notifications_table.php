@@ -10,9 +10,9 @@ return new class extends Migration
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained();
-            $table->string('type'); // transaction_update, dispute, payment, system
-            $table->string('title');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('type', 50);
+            $table->string('title', 255);
             $table->text('message');
             $table->string('link')->nullable();
             $table->boolean('is_read')->default(false);

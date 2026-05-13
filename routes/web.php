@@ -14,8 +14,13 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\PhoneVerificationController;
 use App\Http\Controllers\Auth\KycController;
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\DisputeAdminController;
+use App\Http\Controllers\Admin\TransactionAdminController;
 use App\Http\Middleware\RateLimitPayment;
 use Illuminate\Support\Facades\Mail;
+
 /*
 |--------------------------------------------------------------------------
 | Pages publiques
@@ -166,38 +171,32 @@ Route::get('/paiement/callback/{provider}/{transaction}', [PaymentController::cl
 */
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/', [AdminController::class, 'index'])->name('dashboard');
 
     // Utilisateurs
-    Route::get('/utilisateurs', [\App\Http\Controllers\Admin\AdminUserController::class, 'index'])->name('users.index');
-    Route::get('/utilisateurs/{user}', [\App\Http\Controllers\Admin\AdminUserController::class, 'show'])->name('users.show');
-    Route::post('/utilisateurs/{user}/valider-kyc', [\App\Http\Controllers\Admin\AdminUserController::class, 'validateKyc'])->name('users.validate-kyc');
-    Route::post('/utilisateurs/{user}/suspendre', [\App\Http\Controllers\Admin\AdminUserController::class, 'suspend'])->name('users.suspend');
+    Route::get('/utilisateurs', [AdminUserController::class, 'index'])->name('users.index');
+    Route::get('/utilisateurs/{user}', [AdminUserController::class, 'show'])->name('users.show');
+    Route::post('/utilisateurs/{user}/valider-kyc', [AdminUserController::class, 'validateKyc'])->name('users.validate-kyc');
+    Route::post('/utilisateurs/{user}/suspendre', [AdminUserController::class, 'suspend'])->name('users.suspend');
 
     // Transactions
-    Route::get('/transactions', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'index'])->name('transactions.index');
-    Route::get('/transactions/{transaction}', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'show'])->name('transactions.show');
-    Route::post('/transactions/{transaction}/liberer', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'release'])->name('transactions.release');
-    Route::post('/transactions/{transaction}/rembourser', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'refund'])->name('transactions.refund');
+    Route::get('/transactions', [TransactionAdminController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions/{transaction}', [TransactionAdminController::class, 'show'])->name('transactions.show');
+    Route::post('/transactions/{transaction}/liberer', [TransactionAdminController::class, 'release'])->name('transactions.release');
+    Route::post('/transactions/{transaction}/rembourser', [TransactionAdminController::class, 'refund'])->name('transactions.refund');
 
     // Litiges
-    Route::get('/litiges', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'index'])->name('disputes.index');
-    Route::get('/litiges/{dispute}', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'show'])->name('disputes.show');
-    Route::post('/litiges/{dispute}/arbitrer', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'arbitrate'])->name('disputes.arbitrate');
-    Route::post('/litiges/{dispute}/fermer', [\App\Http\Controllers\Admin\AdminDisputeController::class, 'close'])->name('disputes.close');
+    Route::get('/litiges', [DisputeAdminController::class, 'index'])->name('disputes.index');
+    Route::get('/litiges/{dispute}', [DisputeAdminController::class, 'show'])->name('disputes.show');
+    Route::post('/litiges/{dispute}/arbitrer', [DisputeAdminController::class, 'arbitrate'])->name('disputes.arbitrate');
+    Route::post('/litiges/{dispute}/fermer', [DisputeAdminController::class, 'close'])->name('disputes.close');
 });
-
 
 
 Route::get('/test-mail', function () {
-
     Mail::raw('Brevo fonctionne', function ($message) {
-
         $message->to('test@gmail.com')
                 ->subject('Test Brevo');
     });
-
-    return 'Mail envoyé';
+    return 'Mail envoye';
 });
-
-

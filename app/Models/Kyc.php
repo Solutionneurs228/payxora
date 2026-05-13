@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\KycStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +10,8 @@ class Kyc extends Model
 {
     use HasFactory;
 
+    protected $table = 'kycs';
+
     protected $fillable = [
         'user_id',
         'full_name',
@@ -18,20 +19,22 @@ class Kyc extends Model
         'nationality',
         'document_type',
         'document_number',
+        'address',
         'document_front',
         'document_back',
         'selfie',
-        'address',
         'status',
-        'rejection_reason',
-        'reviewed_by',
-        'reviewed_at',
+        'admin_notes',
+        'phone_verified',
+        'submitted_at',
+        'verified_at',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
-        'reviewed_at' => 'datetime',
-        'status' => KycStatus::class,
+        'phone_verified' => 'boolean',
+        'submitted_at' => 'datetime',
+        'verified_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

@@ -18,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Alias middlewares
         $middleware->alias([
-            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'admin' => \App\Http\Middleware\Admin::class,
             'kyc' => \App\Http\Middleware\KycMiddleware::class,
             'transaction.access' => \App\Http\Middleware\EnsureTransactionAccess::class,
             'verified' => \App\Http\Middleware\EnsureEmailVerified::class,

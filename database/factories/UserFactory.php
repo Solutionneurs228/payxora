@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -14,26 +13,27 @@ class UserFactory extends Factory
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
-            'phone' => fake()->unique()->numerify('9########'),
+            'phone' => fake()->unique()->numerify('+2289########'),
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
-            'role' => UserRole::BUYER,
+            'role' => 'buyer',
             'is_active' => true,
+            'kyc_status' => 'pending',
         ];
     }
 
     public function admin(): static
     {
         return $this->state(fn (array $attributes) => [
-            'role' => UserRole::ADMIN,
+            'role' => 'admin',
         ]);
     }
 
     public function seller(): static
     {
         return $this->state(fn (array $attributes) => [
-            'role' => UserRole::SELLER,
+            'role' => 'seller',
         ]);
     }
 
@@ -41,6 +41,13 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    public function withKyc(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'kyc_status' => 'verified',
         ]);
     }
 }

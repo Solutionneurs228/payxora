@@ -17,11 +17,13 @@ return new class extends Migration
             $table->timestamp('phone_verified_at')->nullable();
             $table->string('password');
             $table->string('role', 20)->default('buyer');
+            $table->enum('kyc_status', ['pending', 'verified', 'rejected'])->default('pending');
             $table->boolean('is_active')->default(true);
             $table->timestamp('last_login_at')->nullable();
             $table->string('last_login_ip', 45)->nullable();
             $table->unsignedTinyInteger('failed_login_attempts')->default(0);
             $table->timestamp('locked_until')->nullable();
+            $table->string('profile_photo')->nullable();
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();

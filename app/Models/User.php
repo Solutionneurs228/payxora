@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable
 {
@@ -18,11 +20,14 @@ class User extends Authenticatable
         'password',
         'role',
         'kyc_status',
-        'profile_photo',
-        'id_document',
-        'address',
-        'city',
         'is_active',
+        'email_verified_at',
+        'phone_verified_at',
+        'last_login_at',
+        'last_login_ip',
+        'failed_login_attempts',
+        'locked_until',
+        'profile_photo',
     ];
 
     protected $hidden = [
@@ -32,26 +37,23 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'phone_verified_at' => 'datetime',
+        'last_login_at' => 'datetime',
+        'locked_until' => 'datetime',
         'password' => 'hashed',
         'is_active' => 'boolean',
+        'failed_login_attempts' => 'integer',
     ];
 
-    // On garde uniquement ce qui est cohérent avec "name"
     protected $appends = [
         'initials',
     ];
 
-    /**
-     * Retourne le nom complet (équivalent direct du champ name)
-     */
     public function getFullNameAttribute(): string
     {
         return $this->name ?? '';
     }
 
-    /**
-     * Génère les initiales à partir du champ name
-     */
     public function getInitialsAttribute(): string
     {
         if (!$this->name) {
@@ -80,37 +82,47 @@ class User extends Authenticatable
         return $this->role === 'seller';
     }
 
+    public function isBuyer(): bool
+    {
+        return $this->role === 'buyer';
+    }
+
     public function isKycVerified(): bool
     {
         return $this->kyc_status === 'verified';
     }
 
-    public function transactionsAsSeller()
+    public function kyc(): HasOne
+    {
+        return $this->hasOne(Kyc::class);
+    }
+
+    public function transactionsAsSeller(): HasMany
     {
         return $this->hasMany(Transaction::class, 'seller_id');
     }
 
-    public function transactionsAsBuyer()
+    public function transactionsAsBuyer(): HasMany
     {
         return $this->hasMany(Transaction::class, 'buyer_id');
     }
 
-    public function payments()
+    public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
     }
 
-    public function disputesOpened()
+    public function disputesOpened(): HasMany
     {
         return $this->hasMany(Dispute::class, 'opened_by');
     }
 
-    public function notifications()
+    public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class)->latest();
     }
 
-    public function unreadNotifications()
+    public function unreadNotifications(): HasMany
     {
         return $this->notifications()->where('is_read', false);
     }

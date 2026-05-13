@@ -10,11 +10,11 @@ return new class extends Migration
     {
         Schema::create('escrow_accounts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('transaction_id')->constrained();
-            $table->decimal('amount_held', 12, 2);
-            $table->enum('status', ['holding', 'released', 'refunded'])->default('holding');
+            $table->foreignId('transaction_id')->constrained()->onDelete('cascade');
+            $table->decimal('amount', 12, 2);
+            $table->string('currency', 3)->default('XOF');
+            $table->string('status', 20)->default('held');
             $table->timestamp('released_at')->nullable();
-            $table->timestamp('refunded_at')->nullable();
             $table->timestamps();
         });
     }
