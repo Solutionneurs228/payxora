@@ -119,6 +119,15 @@ Route::middleware(['auth', 'kyc'])->group(function () {
     Route::post('/transactions/{transaction}/annuler', [TransactionController::class, 'cancel'])->name('transactions.cancel');
     Route::get('/transactions/{transaction}/payer', [TransactionController::class, 'pay'])->name('transactions.pay');
 
+Route::get('/t/{reference}', [TransactionController::class, 'showPublic'])
+    ->name('transactions.public')
+    ->where('reference', 'PAYX-[A-Z0-9]+');
+
+Route::post('/t/{reference}/claim', [TransactionController::class, 'claim'])
+    ->name('transactions.claim')
+    ->middleware('auth')
+    ->where('reference', 'PAYX-[A-Z0-9]+');
+
     // Litiges
     Route::post('/transactions/{transaction}/litige', [DisputeController::class, 'store'])->name('disputes.store');
     Route::get('/litiges', [DisputeController::class, 'index'])->name('disputes.index');

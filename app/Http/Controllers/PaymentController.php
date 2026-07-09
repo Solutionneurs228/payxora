@@ -8,6 +8,8 @@ use App\Models\Payment;
 use App\Models\EscrowAccount;
 use App\Models\Notification;
 use App\Models\ActivityLog;
+use App\Enums\TransactionStatus;
+use App\Enums\PaymentStatus;
 use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
@@ -38,17 +40,17 @@ class PaymentController extends Controller
             'amount' => $transaction->amount,
             'fees' => $transaction->amount * 0.01, // 1% frais
             'provider_reference' => $providerRef,
-            'status' => 'processing',
+            'status' => PaymentStatus::PENDING,
         ]);
 
         // Simulation reussite (en prod: appel API TMoney/Moov)
         $payment->update([
-            'status' => 'success',
+            'status' => PaymentStatus::COMPLETED,
             'processed_at' => now(),
         ]);
 
         $transaction->update([
-            'status' => 'paid',
+            'status' => TransactionStatus::FUNDED,
             'payment_method' => $validated['method'],
             'payment_reference' => $providerRef,
             'paid_at' => now(),
@@ -96,6 +98,6 @@ class PaymentController extends Controller
 
     public function failure(Transaction $transaction)
     {
-        return view('transactions.payment-failure', compact('transaction'));
+        return view('transactions.payment-success', compact('transaction'));
     }
 }

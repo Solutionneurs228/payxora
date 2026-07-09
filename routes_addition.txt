@@ -1,0 +1,11 @@
+
+// Lien public de partage transaction (pas besoin d'auth)
+Route::get('/t/{reference}', [TransactionController::class, 'showPublic'])
+    ->name('transactions.public')
+    ->where('reference', 'PAYX-[A-Z0-9]+');
+
+// Acheteur réclame la transaction
+Route::post('/t/{reference}/claim', [TransactionController::class, 'claim'])
+    ->name('transactions.claim')
+    ->middleware('auth')
+    ->where('reference', 'PAYX-[A-Z0-9]+');

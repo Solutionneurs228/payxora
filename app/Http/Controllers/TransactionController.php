@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
 use App\Models\Notification;
 use App\Models\ActivityLog;
+use App\Enums\TransactionStatus;
 
 class TransactionController extends Controller
 {
@@ -37,21 +38,25 @@ class TransactionController extends Controller
         ]);
 
         $transaction = Transaction::create([
-            ...$validated,
+            'title' => $validated['product_name'],
+            'description' => $validated['product_description'] ?? null,
+            'amount' => $validated['amount'],
             'seller_id' => Auth::id(),
-            'status' => 'pending',
+            'status' => TransactionStatus::DRAFT,
         ]);
 
         ActivityLog::log('transaction_created', $transaction, Auth::user());
 
         return redirect()->route('transactions.show', $transaction)
-            ->with('success', 'Transaction creee. Partagez ce lien avec l\'acheteur.');
+            ->with('success', 'Transaction creee. Partagez ce lien avec l\'acheteur : ' . route('transactions.public', $transaction->reference));
     }
 
     public function show(Transaction $transaction)
     {
+        $transaction->load(['seller', 'buyer', 'payment', 'escrow', 'dispute', 'logs']);
         $this->authorizeAccess($transaction);
         return view('transactions.show', compact('transaction'));
+
     }
 
     public function pay(Transaction $transaction)
@@ -60,7 +65,7 @@ class TransactionController extends Controller
             abort(403);
         }
 
-        if (!$transaction->isPending()) {
+        if (!$transaction->isPendingPayment()) {
             return back()->with('error', 'Cette transaction ne peut plus etre payee.');
         }
 
@@ -73,7 +78,7 @@ class TransactionController extends Controller
     {
         $this->authorizeAccess($transaction);
 
-        if (!$transaction->isDelivered()) {
+        if ($transaction->status !== TransactionStatus::DELIVERED) {
             return back()->with('error', 'La livraison n\'est pas confirmee.');
         }
 
@@ -82,7 +87,7 @@ class TransactionController extends Controller
         }
 
         $transaction->update([
-            'status' => 'completed',
+            'status' => TransactionStatus::COMPLETED,
             'completed_at' => now(),
         ]);
 
@@ -99,7 +104,7 @@ class TransactionController extends Controller
             'user_id' => $transaction->seller_id,
             'type' => 'transaction_completed',
             'title' => 'Paiement libere',
-            'message' => "Le paiement pour {$transaction->product_name} a ete libere.",
+            'message' => "Le paiement pour {$transaction->title} a ete libere.",
             'link' => route('transactions.show', $transaction),
         ]);
 
@@ -112,6 +117,7 @@ class TransactionController extends Controller
             ->with('success', 'Reception confirmee. Le vendeur a ete paye.');
     }
 
+
     public function cancel(Transaction $transaction)
     {
         $this->authorizeAccess($transaction);
@@ -121,7 +127,7 @@ class TransactionController extends Controller
         }
 
         $transaction->update([
-            'status' => 'cancelled',
+            'status' => TransactionStatus::CANCELLED,
             'cancelled_at' => now(),
         ]);
 
@@ -131,6 +137,57 @@ class TransactionController extends Controller
             ->with('success', 'Transaction annulee.');
     }
 
+    /**
+     * Affiche la transaction via lien public (sans auth)
+     */
+    public function showPublic(string $reference)
+    {
+        $transaction = Transaction::where('reference', $reference)
+            ->whereIn('status', [TransactionStatus::DRAFT, TransactionStatus::PENDING_PAYMENT])
+            ->firstOrFail();
+
+        return view('transactions.public', compact('transaction'));
+    }
+
+    /**
+     * L'acheteur reclame la transaction
+     */
+    public function claim(Request $request, string $reference)
+    {
+        $transaction = Transaction::where('reference', $reference)
+            ->whereNull('buyer_id')
+            ->whereIn('status', [TransactionStatus::DRAFT, TransactionStatus::PENDING_PAYMENT])
+            ->firstOrFail();
+
+        if ($transaction->seller_id === Auth::id()) {
+            return back()->with('error', 'Vous ne pouvez pas acheter votre propre produit.');
+        }
+
+        if (!Auth::user()->isKycVerified()) {
+            return redirect()->route('kyc.create')
+                ->with('info', 'Veuillez completer votre KYC avant d\'acheter.');
+        }
+
+        $transaction->update([
+            'buyer_id' => Auth::id(),
+            'status' => TransactionStatus::PENDING_PAYMENT,
+            'published_at' => now(),
+        ]);
+
+        Notification::create([
+            'user_id' => $transaction->seller_id,
+            'type' => 'buyer_claimed',
+            'title' => 'Acheteur trouve !',
+            'message' => Auth::user()->name . ' souhaite acheter ' . $transaction->title,
+            'link' => route('transactions.show', $transaction),
+        ]);
+
+        \App\Services\BrevoService::sendBuyerFound($transaction->seller, $transaction, Auth::user());
+
+        return redirect()->route('payment.show', $transaction)
+            ->with('success', 'Transaction reclamee ! Procedez au paiement.');
+    }
+
     private function authorizeAccess(Transaction $transaction)
     {
         $user = Auth::user();
@@ -138,4 +195,5 @@ class TransactionController extends Controller
             abort(403);
         }
     }
+
 }

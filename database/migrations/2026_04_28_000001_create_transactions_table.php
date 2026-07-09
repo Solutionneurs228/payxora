@@ -11,8 +11,8 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->string('reference', 50)->unique();
-            $table->foreignId('buyer_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('seller_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('buyer_id')->nullable()->constrained('users')->nullOnDelete();            
+            $table->foreignId('seller_id')->constrained('users')->restrictOnDelete();
             $table->string('title', 255);
             $table->text('description')->nullable();
             $table->decimal('amount', 12, 2);

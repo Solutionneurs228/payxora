@@ -1,7 +1,4 @@
-
-# === PROFIL + PAGES PUBLIQUES (4 fichiers) ===
-
-profile = r"""@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Mon profil')
 
@@ -430,22 +427,3 @@ contact = r"""@extends('layouts.app')
     </div>
 </section>
 @endsection
-"""
-
-with open('/mnt/agents/output/payxora-togo/resources/views/dashboard/profile.blade.php', 'w') as f:
-    f.write(profile)
-
-with open('/mnt/agents/output/payxora-togo/resources/views/pages/how-it-works.blade.php', 'w') as f:
-    f.write(how_it_works)
-
-with open('/mnt/agents/output/payxora-togo/resources/views/pages/pricing.blade.php', 'w') as f:
-    f.write(pricing)
-
-with open('/mnt/agents/output/payxora-togo/resources/views/pages/about.blade.php', 'w') as f:
-    f.write(about)
-
-with open('/mnt/agents/output/payxora-togo/resources/views/pages/contact.blade.php', 'w') as f:
-    f.write(contact)
-
-print("✅ profile + how-it-works + pricing + about + contact crees (5 fichiers)")
-print("📊 Reste: 9 fichiers (Admin 7 + CSS 1 + JS 1)")

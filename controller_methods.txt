@@ -1,0 +1,55 @@
+
+    /**
+     * Affiche la transaction via lien public (sans auth)
+     */
+    public function showPublic(string $reference)
+    {
+        $transaction = Transaction::where('reference', $reference)
+            ->whereIn('status', [TransactionStatus::DRAFT, TransactionStatus::PENDING_PAYMENT])
+            ->firstOrFail();
+
+        return view('transactions.public', compact('transaction'));
+    }
+
+    /**
+     * L'acheteur réclame la transaction
+     */
+    public function claim(Request $request, string $reference)
+    {
+        $transaction = Transaction::where('reference', $reference)
+            ->whereNull('buyer_id')
+            ->whereIn('status', [TransactionStatus::DRAFT, TransactionStatus::PENDING_PAYMENT])
+            ->firstOrFail();
+
+        // Verifier que l'acheteur n'est pas le vendeur
+        if ($transaction->seller_id === Auth::id()) {
+            return back()->with('error', 'Vous ne pouvez pas acheter votre propre produit.');
+        }
+
+        // Verifier KYC acheteur
+        if (!Auth::user()->isKycVerified()) {
+            return redirect()->route('kyc.create')
+                ->with('info', 'Veuillez completer votre KYC avant d'acheter.');
+        }
+
+        $transaction->update([
+            'buyer_id' => Auth::id(),
+            'status' => TransactionStatus::PENDING_PAYMENT,
+            'published_at' => now(),
+        ]);
+
+        // Notifier le vendeur
+        Notification::create([
+            'user_id' => $transaction->seller_id,
+            'type' => 'buyer_claimed',
+            'title' => 'Acheteur trouve !',
+            'message' => Auth::user()->name . ' souhaite acheter ' . $transaction->product_name,
+            'link' => route('transactions.show', $transaction),
+        ]);
+
+        // Email Brevo
+        \App\Services\BrevoService::sendBuyerFound($transaction->seller, $transaction, Auth::user());
+
+        return redirect()->route('payment.show', $transaction)
+            ->with('success', 'Transaction reclamee ! Procédez au paiement.');
+    }

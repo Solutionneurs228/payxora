@@ -38,9 +38,9 @@ class UserSeeder extends Seeder
         // Vendeur
         $seller = User::create([
             'name' => 'Vendeur Demo',
-            'email' => 'seller@payxora.tg',
+            'email' => 'solutionneurs228@gmail.com',
             'phone' => '+22890123457',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('Solutionneurs23'),
             'role' => 'seller',
             'is_active' => true,
             'email_verified_at' => now(),
@@ -62,9 +62,9 @@ class UserSeeder extends Seeder
         // Acheteur
         $buyer = User::create([
             'name' => 'Acheteur Demo',
-            'email' => 'buyer@payxora.tg',
+            'email' => 'mtcdigit@gmail.com',
             'phone' => '+22890123458',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('Mtcdigit@23'),
             'role' => 'buyer',
             'is_active' => true,
             'email_verified_at' => now(),

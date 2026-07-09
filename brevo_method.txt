@@ -1,0 +1,39 @@
+
+    /**
+     * Notifie le vendeur qu'un acheteur a ete trouve
+     */
+    public static function sendBuyerFound(User $seller, Transaction $transaction, User $buyer): void
+    {
+        try {
+            $response = Http::withHeaders([
+                'api-key' => config('services.brevo.key'),
+                'Content-Type' => 'application/json',
+            ])->post('https://api.brevo.com/v3/smtp/email', [
+                'sender' => [
+                    'name' => 'PayXora',
+                    'email' => config('services.brevo.sender'),
+                ],
+                'to' => [
+                    ['email' => $seller->email, 'name' => $seller->name],
+                ],
+                'templateId' => 3, // Template "Acheteur trouve"
+                'params' => [
+                    'SELLER_NAME' => $seller->name,
+                    'BUYER_NAME' => $buyer->name,
+                    'BUYER_EMAIL' => $buyer->email,
+                    'PRODUCT_NAME' => $transaction->product_name,
+                    'AMOUNT' => number_format($transaction->amount, 0, ',', ' ') . ' FCFA',
+                    'TRANSACTION_LINK' => route('transactions.show', $transaction),
+                ],
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Brevo buyer found email failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Brevo buyer found email exception: ' . $e->getMessage());
+        }
+    }

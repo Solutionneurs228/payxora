@@ -38,10 +38,10 @@ class DatabaseSeeder extends Seeder
 
         // Vendeur test
         $seller = User::create([
-            'name' => 'Kossi Amedegnato',
-            'email' => 'vendeur@payxora.tg',
+            'name' => 'Vendeur Demo',
+            'email' => 'solutionneurs228@gmail.com',
             'phone' => '+22891111111',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('Solutionneurs23'),
             'role' => 'seller',
             'kyc_status' => 'verified',
             'is_active' => true,
@@ -50,7 +50,7 @@ class DatabaseSeeder extends Seeder
 
         Kyc::create([
             'user_id' => $seller->id,
-            'full_name' => 'Kossi Amedegnato',
+            'full_name' => 'Vendeur Demo',
             'birth_date' => '1985-05-15',
             'nationality' => 'Togolaise',
             'document_type' => 'cni',
@@ -63,10 +63,10 @@ class DatabaseSeeder extends Seeder
 
         // Acheteur test
         $buyer = User::create([
-            'name' => 'Afi Kodjo',
-            'email' => 'acheteur@payxora.tg',
+            'name' => 'Acheteur Demo',
+            'email' => 'mtcdigit@gmail.com',
             'phone' => '+22892222222',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('Mtcdigit@23'),
             'role' => 'buyer',
             'kyc_status' => 'verified',
             'is_active' => true,
@@ -75,7 +75,7 @@ class DatabaseSeeder extends Seeder
 
         Kyc::create([
             'user_id' => $buyer->id,
-            'full_name' => 'Afi Kodjo',
+            'full_name' => 'Acheteur Demo',
             'birth_date' => '1992-08-20',
             'nationality' => 'Togolaise',
             'document_type' => 'cni',

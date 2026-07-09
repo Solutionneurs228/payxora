@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\TransactionStatus;
 
 class Transaction extends Model
 {
@@ -36,6 +37,7 @@ class Transaction extends Model
     ];
 
     protected $casts = [
+        'status' => TransactionStatus::class,
         'amount' => 'decimal:2',
         'commission_amount' => 'decimal:2',
         'net_amount' => 'decimal:2',
@@ -56,7 +58,7 @@ class Transaction extends Model
 
         static::creating(function ($transaction) {
             $transaction->reference = 'PAYX-' . strtoupper(uniqid());
-            $transaction->commission_amount = $transaction->amount * 0.03;
+            $transaction->commission_amount = max(100, min($transaction->amount * 0.03, 50000));
             $transaction->net_amount = $transaction->amount - $transaction->commission_amount;
         });
     }
@@ -86,52 +88,85 @@ class Transaction extends Model
         return $this->hasOne(Dispute::class);
     }
 
-    public function isPending(): bool { return $this->status === 'pending'; }
-    public function isPaid(): bool { return $this->status === 'paid'; }
-    public function isShipped(): bool { return $this->status === 'shipped'; }
-    public function isDelivered(): bool { return $this->status === 'delivered'; }
-    public function isCompleted(): bool { return $this->status === 'completed'; }
-    public function isDisputed(): bool { return $this->status === 'disputed'; }
-    public function isCancelled(): bool { return $this->status === 'cancelled'; }
+    public function isPendingPayment(): bool
+    {
+        return $this->status === TransactionStatus::PENDING_PAYMENT;
+    }
+
+    public function isFunded(): bool
+    {
+        return $this->status === TransactionStatus::FUNDED;
+    }
+
+    public function isShipped(): bool
+    {
+        return $this->status === TransactionStatus::SHIPPED;
+    }
+
+    public function isDelivered(): bool
+    {
+        return $this->status === TransactionStatus::DELIVERED;
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === TransactionStatus::COMPLETED;
+    }
+
+    public function isDisputed(): bool
+    {
+        return $this->status === TransactionStatus::DISPUTED;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === TransactionStatus::CANCELLED;
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === TransactionStatus::DRAFT;
+    }
 
     public function canBeCancelled(): bool
     {
-        return in_array($this->status, ['pending', 'paid']);
+        return in_array($this->status, [
+            TransactionStatus::DRAFT,
+            TransactionStatus::PENDING_PAYMENT,
+            TransactionStatus::FUNDED,
+        ]);
     }
 
     public function canOpenDispute(): bool
     {
-        return in_array($this->status, ['shipped', 'delivered'])
-            && $this->dispute_deadline && $this->dispute_deadline->isFuture();
+        return in_array($this->status, [
+            TransactionStatus::SHIPPED,
+            TransactionStatus::DELIVERED,
+        ]) && $this->dispute_deadline && $this->dispute_deadline->isFuture();
     }
 
     public function getStatusLabel(): string
     {
-        return match($this->status) {
-            'pending' => 'En attente de paiement',
-            'paid' => 'Paye — En sequestre',
-            'shipped' => 'Expedie',
-            'delivered' => 'Livre — En attente confirmation',
-            'completed' => 'Termine',
-            'cancelled' => 'Annule',
-            'disputed' => 'En litige',
-            'refunded' => 'Rembourse',
-            default => $this->status,
-        };
+        return $this->status->label();
     }
+
+    public function logs()
+{
+    return $this->hasMany(TransactionLog::class);
+}
 
     public function getStatusColor(): string
     {
         return match($this->status) {
-            'pending' => 'warning',
-            'paid' => 'info',
-            'shipped' => 'primary',
-            'delivered' => 'purple',
-            'completed' => 'success',
-            'cancelled' => 'secondary',
-            'disputed' => 'danger',
-            'refunded' => 'dark',
-            default => 'secondary',
+            TransactionStatus::DRAFT => 'bg-gray-100 text-gray-700',
+            TransactionStatus::PENDING_PAYMENT => 'bg-yellow-100 text-yellow-700',
+            TransactionStatus::FUNDED => 'bg-blue-100 text-blue-700',
+            TransactionStatus::SHIPPED => 'bg-indigo-100 text-indigo-700',
+            TransactionStatus::DELIVERED => 'bg-purple-100 text-purple-700',
+            TransactionStatus::COMPLETED => 'bg-emerald-100 text-emerald-700',
+            TransactionStatus::CANCELLED => 'bg-gray-100 text-gray-500',
+            TransactionStatus::DISPUTED => 'bg-red-100 text-red-700',
+            TransactionStatus::REFUNDED => 'bg-slate-100 text-slate-700',
         };
     }
 }

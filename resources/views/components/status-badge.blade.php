@@ -1,7 +1,10 @@
 @props(['status'])
 
 @php
-$color = match($status) {
+// Si c'est un enum, récupérer la value
+$statusValue = is_object($status) && enum_exists(get_class($status)) ? $status->value : $status;
+
+$color = match($statusValue) {
     'pending', 'pending_payment', 'draft' => 'yellow',
     'paid', 'funded', 'shipped' => 'blue',
     'delivered' => 'purple',
@@ -12,7 +15,7 @@ $color = match($status) {
     default => 'gray',
 };
 
-$label = match($status) {
+$label = match($statusValue) {
     'pending' => 'En attente',
     'pending_payment' => 'En attente de paiement',
     'draft' => 'Brouillon',
@@ -24,7 +27,7 @@ $label = match($status) {
     'cancelled' => 'Annule',
     'disputed' => 'En litige',
     'refunded' => 'Rembourse',
-    default => ucfirst($status),
+    default => ucfirst($statusValue),
 };
 @endphp
 

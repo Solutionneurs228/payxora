@@ -1,49 +1,62 @@
 @extends('layouts.app')
 
-@section('title', 'A propos — PayXora')
+@section('title', 'A propos')
 
 @section('content')
-<div class="max-w-3xl mx-auto px-4 py-12">
-    <div class="text-center mb-12">
-        <h1 class="text-3xl font-bold text-gray-900">A propos de PayXora</h1>
-        <p class="text-gray-500 mt-3">La confiance au coeur de chaque transaction</p>
+<section class="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-16">
+            <h1 class="text-3xl lg:text-4xl font-bold text-slate-900">A propos de PayXora</h1>
+            <p class="mt-4 text-lg text-slate-500">Securiser le commerce en ligne au Togo</p>
+        </div>
+
+        <div class="prose prose-lg prose-slate mx-auto">
+            <p class="text-slate-600 leading-relaxed">
+                PayXora est ne d'un constat simple: au Togo, 7 internautes sur 10 hesitent a acheter en ligne par peur d'arnaque.
+                Les vendeurs individuels manquent de credibilite, et aucun mecanisme escrow n'existait localement pour securiser les echanges P2P.
+            </p>
+
+            <h2 class="text-2xl font-bold text-slate-900 mt-12 mb-4">Notre mission</h2>
+            <p class="text-slate-600 leading-relaxed">
+                Democratiser la confiance dans le e-commerce togolais en proposant une solution de paiement securise (escrow)
+                accessible a tous. Que vous soyez vendeur ou acheteur, PayXora garantit que chaque transaction se deroule en toute securite.
+            </p>
+
+            <h2 class="text-2xl font-bold text-slate-900 mt-12 mb-4">Comment ca marche ?</h2>
+            <p class="text-slate-600 leading-relaxed">
+                L'argent de l'acheteur est bloque sur un compte sequestre jusqu'a confirmation de livraison.
+                Ni le vendeur ne peut encaisser sans livrer, ni l'acheteur ne peut recevoir sans payer.
+                En cas de litige, notre equipe d'arbitrage intervient pour trouver une solution equitable.
+            </p>
+
+            <h2 class="text-2xl font-bold text-slate-900 mt-12 mb-4">Nos partenaires</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6">
+                <div class="p-4 bg-slate-50 rounded-xl text-center">
+                    <div class="w-12 h-12 mx-auto bg-yellow-400 rounded-lg flex items-center justify-center mb-2">
+                        <span class="text-yellow-900 font-bold text-xs">T-Money</span>
+                    </div>
+                    <p class="text-sm text-slate-600">Togocom</p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-xl text-center">
+                    <div class="w-12 h-12 mx-auto bg-blue-500 rounded-lg flex items-center justify-center mb-2">
+                        <span class="text-white font-bold text-xs">Moov</span>
+                    </div>
+                    <p class="text-sm text-slate-600">Moov Africa</p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-xl text-center">
+                    <div class="w-12 h-12 mx-auto bg-emerald-600 rounded-lg flex items-center justify-center mb-2">
+                        <span class="text-white font-bold text-xs">Ecobank</span>
+                    </div>
+                    <p class="text-sm text-slate-600">Ecobank</p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-xl text-center">
+                    <div class="w-12 h-12 mx-auto bg-teal-600 rounded-lg flex items-center justify-center mb-2">
+                        <span class="text-white font-bold text-xs">Orabank</span>
+                    </div>
+                    <p class="text-sm text-slate-600">Orabank</p>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <div class="prose prose-indigo mx-auto">
-        <p class="text-lg text-gray-600 leading-relaxed">
-            PayXora est une plateforme de paiement securise par escrow, nee au Togo avec l'ambition de revolutionner le commerce en ligne en Afrique de l'Ouest.
-        </p>
-
-        <h2 class="text-xl font-bold text-gray-900 mt-8 mb-4">Notre mission</h2>
-        <p class="text-gray-600 leading-relaxed">
-            Eliminer la peur de l'arnaque dans les transactions en ligne. Nous croyons que la confiance est le moteur du commerce digital. En bloquant les fonds jusqu'a confirmation de livraison, nous protegeons a la fois l'acheteur et le vendeur.
-        </p>
-
-        <h2 class="text-xl font-bold text-gray-900 mt-8 mb-4">Pourquoi PayXora ?</h2>
-        <ul class="space-y-3 text-gray-600">
-            <li class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                <span><strong>Securite totale</strong> — Votre argent est protege jusqu'a confirmation</span>
-            </li>
-            <li class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                <span><strong>Mobile Money</strong> — Paiement via TMoney et Moov, sans carte bancaire</span>
-            </li>
-            <li class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                <span><strong>Mediation</strong> — Resolution des litiges par notre equipe</span>
-            </li>
-            <li class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                <span><strong>KYC verifie</strong> — Tous les utilisateurs sont identifies</span>
-            </li>
-        </ul>
-
-        <h2 class="text-xl font-bold text-gray-900 mt-8 mb-4">Zone de couverture</h2>
-        <p class="text-gray-600 leading-relaxed">
-            Phase 1 : Togo<br>
-            Phase 2 : Benin, Cote d'Ivoire, Ghana (UEMOA / CEDEAO)
-        </p>
-    </div>
-</div>
+</section>
 @endsection
