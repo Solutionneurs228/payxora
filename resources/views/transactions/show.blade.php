@@ -8,7 +8,7 @@
     <div class="flex items-center justify-between mb-6">
         <div>
             <div class="flex items-center gap-3">
-                <h1 class="text-2xl font-bold text-gray-900">{{ $transaction->product_name }}</h1>
+                <h1 class="text-2xl font-bold text-gray-900">{{ $transaction->title }}</h1>
                 <x-status-badge :status="$transaction->status->value" />
             </div>
             <p class="text-sm text-gray-500 mt-1">Reference: <span class="font-mono">{{ $transaction->reference }}</span></p>
@@ -43,10 +43,10 @@
                     </div>
                 </div>
 
-                @if($transaction->product_description)
+                @if($transaction->description)
                 <div class="mt-4 pt-4 border-t border-gray-100">
                     <p class="text-gray-500 text-sm">Description</p>
-                    <p class="text-gray-700 mt-1">{{ $transaction->product_description }}</p>
+                    <p class="text-gray-700 mt-1">{{ $transaction->description }}</p>
                 </div>
                 @endif
 
@@ -64,6 +64,39 @@
                 </div>
                 @endif
             </div>
+
+             <!-- LIEN DE PARTAGE (pour le vendeur, DRAFT ou PENDING_PAYMENT) -->
+            @php
+                $isSeller = $transaction->seller_id == Auth::id();
+                $isDraft = $transaction->status->value === 'draft';
+                $isPendingPayment = $transaction->status->value === 'pending_payment';
+            @endphp
+
+            @if($isSeller && ($isDraft || $isPendingPayment))
+            <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                <h3 class="font-semibold text-blue-900 mb-3">Partager avec l'acheteur</h3>
+
+                <div class="flex gap-2 mb-3">
+                    <input type="text" value="{{ route('transactions.public', $transaction->reference) }}" 
+                           readonly class="flex-1 px-3 py-2 text-sm bg-white border border-blue-200 rounded-lg text-slate-600">
+                    <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.textContent='Copie !'; setTimeout(() => this.textContent='Copier', 2000)" 
+                            class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition">
+                        Copier
+                    </button>
+                </div>
+
+                @if($isDraft)
+                <form method="POST" action="{{ route('transactions.publish', $transaction) }}">
+                    @csrf
+                    <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition text-sm">
+                        Publier la transaction (rendre visible)
+                    </button>
+                </form>
+                @else
+                <p class="text-xs text-blue-600 mt-2">En attente de paiement de l'acheteur.</p>
+                @endif
+            </div>
+            @endif
 
             <!-- Historique -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -164,7 +197,7 @@
                 @endif
 
                 @if($transaction->isDelivered() && $transaction->buyer_id === auth()->id())
-                    <form method="POST" action="{{ route('transactions.confirm', $transaction) }}">
+                    <form method="POST" action="{{ route('transactions.complete', $transaction) }}">
                         @csrf
                         <button type="submit" class="w-full bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition">
                             Confirmer la reception
@@ -187,6 +220,8 @@
                     </form>
                 @endif
             </div>
+
+            
         </div>
     </div>
 </div>
