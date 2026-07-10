@@ -83,6 +83,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/kyc', [KycController::class, 'store'])->name('kyc.store');
     Route::get('/kyc/verification', [KycController::class, 'verification'])->name('kyc.verification');
     Route::get('/kyc/document/{type}/{id}', [KycController::class, 'document'])->name('kyc.document');
+
+        Route::post('/transactions/{transaction}/ship', [TransactionController::class, 'ship'])
+        ->name('transactions.ship');
+    
+    Route::post('/transactions/{transaction}/receive', [TransactionController::class, 'receive'])
+        ->name('transactions.receive');
+
 });
 
 /*
@@ -114,7 +121,7 @@ Route::middleware(['auth', 'kyc'])->group(function () {
     // Workflow Escrow
     Route::post('/transactions/{transaction}/publier', [TransactionController::class, 'publish'])->name('transactions.publish');
     Route::post('/transactions/{transaction}/expedier', [TransactionController::class, 'ship'])->name('transactions.ship');
-    Route::post('/transactions/{transaction}/livrer', [TransactionController::class, 'deliver'])->name('transactions.deliver');
+    Route::post('/transactions/{transaction}/livrer', [TransactionController::class, 'receive'])->name('transactions.receive');
     Route::post('/transactions/{transaction}/confirmer', [TransactionController::class, 'complete'])->name('transactions.complete');
     Route::post('/transactions/{transaction}/annuler', [TransactionController::class, 'cancel'])->name('transactions.cancel');
     Route::get('/transactions/{transaction}/payer', [TransactionController::class, 'pay'])->name('transactions.pay');

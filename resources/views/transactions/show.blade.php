@@ -11,7 +11,7 @@
                 <h1 class="text-2xl font-bold text-gray-900">{{ $transaction->title }}</h1>
                 <x-status-badge :status="$transaction->status->value" />
             </div>
-            <p class="text-sm text-gray-500 mt-1">Reference: <span class="font-mono">{{ $transaction->reference }}</span></p>
+            <p class="text-sm text-gray-500 mt-1">Référence: <span class="font-mono">{{ $transaction->reference }}</span></p>
         </div>
         <a href="{{ route('transactions.index') }}" class="text-sm text-gray-500 hover:text-indigo-600 transition">
             &larr; Retour aux transactions
@@ -19,11 +19,11 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Details principaux -->
+        <!-- Détails principaux -->
         <div class="lg:col-span-2 space-y-6">
-            <!-- Info generale -->
+            <!-- Info générale -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Details</h2>
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Détails</h2>
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <div>
                         <p class="text-gray-500">Montant</p>
@@ -65,11 +65,16 @@
                 @endif
             </div>
 
-             <!-- LIEN DE PARTAGE (pour le vendeur, DRAFT ou PENDING_PAYMENT) -->
+            <!-- LIEN DE PARTAGE (vendeur uniquement, DRAFT ou PENDING_PAYMENT) -->
             @php
-                $isSeller = $transaction->seller_id == Auth::id();
+                $isSeller = $transaction->seller_id === auth()->id();
+                $isBuyer = $transaction->buyer_id === auth()->id();
                 $isDraft = $transaction->status->value === 'draft';
                 $isPendingPayment = $transaction->status->value === 'pending_payment';
+                $isFunded = $transaction->status->value === 'funded';
+                $isShipped = $transaction->status->value === 'shipped';
+                $isDelivered = $transaction->status->value === 'delivered';
+                $isCompleted = $transaction->status->value === 'completed';
             @endphp
 
             @if($isSeller && ($isDraft || $isPendingPayment))
@@ -79,7 +84,7 @@
                 <div class="flex gap-2 mb-3">
                     <input type="text" value="{{ route('transactions.public', $transaction->reference) }}" 
                            readonly class="flex-1 px-3 py-2 text-sm bg-white border border-blue-200 rounded-lg text-slate-600">
-                    <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.textContent='Copie !'; setTimeout(() => this.textContent='Copier', 2000)" 
+                    <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.textContent='Copié !'; setTimeout(() => this.textContent='Copier', 2000)" 
                             class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition">
                         Copier
                     </button>
@@ -161,67 +166,100 @@
                 </div>
             </div>
 
-            <!-- Actions -->
+            <!-- ========================================== -->
+            <!-- ACTIONS PAR RÔLE ET STATUT               -->
+            <!-- ========================================== -->
+
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-3">
                 <h3 class="font-semibold text-gray-900 mb-3">Actions</h3>
 
-                @if($transaction->isPendingPayment() && !$transaction->buyer_id)
+                <!-- ── ACHETEUR : Payer ── -->
+                @if($isPendingPayment && !$transaction->buyer_id && !$isSeller)
                     <form method="POST" action="{{ route('transactions.pay', $transaction) }}">
                         @csrf
                         <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition">
-                            Payer maintenant
+                            💳 Payer maintenant
                         </button>
                     </form>
                 @endif
 
-                @if($transaction->isFunded() && $transaction->seller_id === auth()->id())
+                <!-- ── VENDEUR : Marquer comme expédié ── -->
+                @if($isFunded && $isSeller)
                     <form method="POST" action="{{ route('transactions.ship', $transaction) }}">
                         @csrf
-                        <div class="mb-2">
-                            <input type="text" name="tracking_number" placeholder="Numero de suivi (optionnel)"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-500 mb-1">Méthode d'expédition *</label>
+                            <select name="shipping_method" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Choisir...</option>
+                                <option value="pickup">Retrait en point relais</option>
+                                <option value="delivery">Livraison à domicile</option>
+                                <option value="in_person">Remise en main propre</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <input type="text" name="tracking_number" placeholder="Numéro de suivi (optionnel)"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
                         </div>
                         <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition">
-                            Marquer comme expedie
+                            📦 Marquer comme expédié
                         </button>
                     </form>
                 @endif
 
-                @if($transaction->isShipped() && ($transaction->seller_id === auth()->id() || auth()->user()->isAdmin()))
-                    <form method="POST" action="{{ route('transactions.deliver', $transaction) }}">
+                <!-- ── ACHETEUR : Confirmer réception (J'ai reçu) ── -->
+                @if($isShipped && $isBuyer)
+                    <form method="POST" action="{{ route('transactions.receive', $transaction) }}">
                         @csrf
-                        <button type="submit" class="w-full bg-purple-600 text-white font-semibold py-2.5 rounded-lg hover:bg-purple-700 transition">
-                            Marquer comme livre
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-3">
+                            <p class="text-green-800 text-sm mb-2">
+                                📦 <strong>{{ $transaction->seller->name }}</strong> a expédié votre article.
+                            </p>
+                            <p class="text-xs text-green-600 mb-3">
+                                Confirmez la réception pour libérer le paiement au vendeur.
+                            </p>
+                        </div>
+                        <button type="submit" class="w-full bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition"
+                                onclick="return confirm('Confirmez-vous avoir reçu l\'article ? Le paiement sera libéré au vendeur.')">
+                            ✅ J'ai bien reçu l'article — Libérer le paiement
                         </button>
                     </form>
                 @endif
 
-                @if($transaction->isDelivered() && $transaction->buyer_id === auth()->id())
-                    <form method="POST" action="{{ route('transactions.complete', $transaction) }}">
-                        @csrf
-                        <button type="submit" class="w-full bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition">
-                            Confirmer la reception
-                        </button>
-                    </form>
-
-                    @if($transaction->canOpenDispute())
-                    <a href="{{ route('disputes.create', $transaction) }}" class="block w-full text-center bg-red-50 text-red-600 font-semibold py-2.5 rounded-lg hover:bg-red-100 transition border border-red-200">
-                        Ouvrir un litige
-                    </a>
-                    @endif
+                <!-- ── ACHETEUR : Litige (si livré mais problème) ── -->
+                @if($isDelivered && $isBuyer)
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p class="text-yellow-800 text-sm mb-3">
+                            ⚠️ Un problème avec la livraison ?
+                        </p>
+                        @if($transaction->canOpenDispute())
+                        <a href="{{ route('disputes.create', $transaction) }}" class="block w-full text-center bg-red-50 text-red-600 font-semibold py-2.5 rounded-lg hover:bg-red-100 transition border border-red-200">
+                            🚨 Ouvrir un litige
+                        </a>
+                        @else
+                        <p class="text-xs text-gray-500">Délai de litige dépassé.</p>
+                        @endif
+                    </div>
                 @endif
 
+                <!-- ── Transaction terminée ── -->
+                @if($isCompleted)
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
+                        <p class="text-emerald-800 font-semibold">✅ Transaction terminée</p>
+                        <p class="text-xs text-emerald-600 mt-1">Paiement libéré au vendeur.</p>
+                    </div>
+                @endif
+
+                <!-- ── Annuler (si autorisé) ── -->
                 @if($transaction->canBeCancelled())
-                    <form method="POST" action="{{ route('transactions.cancel', $transaction) }}" onsubmit="return confirm('Etes-vous sur de vouloir annuler cette transaction ?');">
+                    <form method="POST" action="{{ route('transactions.cancel', $transaction) }}" 
+                          onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cette transaction ?');">
                         @csrf
                         <button type="submit" class="w-full text-gray-500 hover:text-red-600 font-medium py-2.5 rounded-lg hover:bg-red-50 transition text-sm">
-                            Annuler la transaction
+                            ❌ Annuler la transaction
                         </button>
                     </form>
                 @endif
             </div>
-
-            
         </div>
     </div>
 </div>

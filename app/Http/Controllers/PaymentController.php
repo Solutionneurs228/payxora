@@ -25,6 +25,13 @@ class PaymentController extends Controller
 
     public function processMobileMoney(Request $request, Transaction $transaction)
     {
+        // Ajouter +228 automatiquement si manquant
+        $phone = $request->input('phone');
+        if (!str_starts_with($phone, '+228')) {
+            $phone = '+228' . ltrim($phone, '0'); // Enlever le 0 initial si présent
+        }
+        $request->merge(['phone' => $phone]);
+
         $validated = $request->validate([
             'method' => ['required', 'in:tmoney,moov'],
             'phone' => ['required', 'regex:/^\+228[0-9]{8}$/'],
@@ -37,6 +44,7 @@ class PaymentController extends Controller
             'transaction_id' => $transaction->id,
             'user_id' => Auth::id(),
             'method' => $validated['method'],
+            'provider' => $validated['method'],
             'amount' => $transaction->amount,
             'fees' => $transaction->amount * 0.01, // 1% frais
             'provider_reference' => $providerRef,
@@ -45,7 +53,7 @@ class PaymentController extends Controller
 
         // Simulation reussite (en prod: appel API TMoney/Moov)
         $payment->update([
-            'status' => PaymentStatus::COMPLETED,
+            'status' => PaymentStatus::SUCCESS,
             'processed_at' => now(),
         ]);
 
@@ -67,8 +75,8 @@ class PaymentController extends Controller
         Notification::create([
             'user_id' => $transaction->seller_id,
             'type' => 'payment_received',
-            'title' => 'Paiement recu',
-            'message' => "Paiement recu pour {$transaction->product_name}. Expediez maintenant !",
+            'title' => 'Paiement reçu',
+            'message' => "Paiement reçu pour {$transaction->title}. Expediez maintenant !",
             'link' => route('transactions.show', $transaction),
         ]);
 
@@ -98,6 +106,6 @@ class PaymentController extends Controller
 
     public function failure(Transaction $transaction)
     {
-        return view('transactions.payment-success', compact('transaction'));
+        return view('transactions.payment-failure', compact('transaction'));
     }
 }

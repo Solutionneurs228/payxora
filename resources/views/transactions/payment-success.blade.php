@@ -20,7 +20,7 @@
             </div>
             <div class="flex justify-between text-sm mb-2">
                 <span class="text-gray-500">Produit</span>
-                <span class="font-medium">{{ $transaction->product_name }}</span>
+                <span class="font-medium">{{ $transaction->title }}</span>
             </div>
             <div class="flex justify-between text-sm">
                 <span class="text-gray-500">Statut</span>

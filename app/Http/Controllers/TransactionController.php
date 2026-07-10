@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\Notification;
 use App\Models\ActivityLog;
 use App\Enums\TransactionStatus;
+use App\Models\EscrowAccount;
 
 class TransactionController extends Controller
 {
@@ -140,14 +141,14 @@ class TransactionController extends Controller
     /**
      * Affiche la transaction via lien public (sans auth)
      */
-    public function showPublic(string $reference)
-    {
-        $transaction = Transaction::where('reference', $reference)
-            ->whereIn('status', [TransactionStatus::DRAFT, TransactionStatus::PENDING_PAYMENT])
-            ->firstOrFail();
+public function showPublic(string $reference)
+{
+    $transaction = Transaction::where('reference', $reference)
+        ->whereIn('status', ['draft', 'pending_payment'])  // ← Strings directement
+        ->firstOrFail();
 
-        return view('transactions.public', compact('transaction'));
-    }
+    return view('transactions.public', compact('transaction'));
+}
 
     /**
      * L'acheteur reclame la transaction
@@ -194,6 +195,93 @@ class TransactionController extends Controller
         if ($transaction->seller_id !== $user->id && $transaction->buyer_id !== $user->id && !$user->isAdmin()) {
             abort(403);
         }
+    }
+
+
+    /**
+     * Marquer la transaction comme expédiée par le vendeur
+     */
+    public function ship(Request $request, Transaction $transaction)
+    {
+        // Vérifier que l'utilisateur est le vendeur
+        if ($transaction->seller_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas le vendeur de cette transaction.');
+        }
+
+        // Vérifier que le paiement a été effectué
+        if ($transaction->status !== TransactionStatus::FUNDED) {
+            return back()->with('error', 'Le paiement n\'a pas encore été effectué.');
+        }
+
+        $validated = $request->validate([
+            'tracking_number' => ['nullable', 'string', 'max:100'],
+            'shipping_method' => ['required', 'in:pickup,delivery,in_person'],
+            'shipping_notes'  => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Mettre à jour la transaction
+        $transaction->update([
+            'status' => TransactionStatus::SHIPPED,
+            'shipped_at' => now(),
+            'tracking_number' => $validated['tracking_number'] ?? null,
+            'shipping_method' => $validated['shipping_method'],
+            'shipping_notes'  => $validated['shipping_notes'] ?? null,
+        ]);
+
+        // Notifier l'acheteur
+        Notification::create([
+            'user_id' => $transaction->buyer_id,
+            'type' => 'item_shipped',
+            'title' => 'Article expédié !',
+            'message' => "Votre achat '{$transaction->title}' a été expédié.",
+            'link' => route('transactions.show', $transaction),
+        ]);
+
+        // Envoyer email à l'acheteur
+        \App\Services\BrevoService::sendItemShipped($transaction->buyer, $transaction);
+
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', 'Article marqué comme expédié ! L\'acheteur a été notifié.');
+    }
+
+    /**
+     * L'acheteur confirme la réception
+     */
+    public function receive(Request $request, Transaction $transaction)
+    {
+        if ($transaction->buyer_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if ($transaction->status !== TransactionStatus::SHIPPED) {
+            return back()->with('error', 'L\'article n\'a pas encore été expédié.');
+        }
+
+        $transaction->update([
+            'status' => TransactionStatus::DELIVERED,
+            'received_at' => now(),
+        ]);
+
+        // Libérer les fonds du escrow au vendeur
+        $escrow = EscrowAccount::where('transaction_id', $transaction->id)->first();
+        if ($escrow) {
+            $escrow->update([
+                'status' => 'released',
+                'released_at' => now(),
+            ]);
+        }
+
+        // Notifier le vendeur
+        Notification::create([
+            'user_id' => $transaction->seller_id,
+            'type' => 'funds_released',
+            'title' => 'Fonds libérés !',
+            'message' => "Les fonds de '{$transaction->title}' ont été libérés. Vous pouvez les retirer.",
+            'link' => route('transactions.show', $transaction),
+        ]);
+
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', 'Réception confirmée ! Les fonds ont été libérés au vendeur.');
     }
 
 }

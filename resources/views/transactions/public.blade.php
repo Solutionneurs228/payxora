@@ -26,7 +26,7 @@
                     <span class="text-sm text-slate-400">{{ $transaction->created_at->diffForHumans() }}</span>
                 </div>
 
-                <h2 class="text-xl font-bold text-slate-900">{{ $transaction->product_name }}</h2>
+                <h2 class="text-xl font-bold text-slate-900">{{ $transaction->title }}</h2>
                 <p class="text-slate-600 mt-2">{{ $transaction->description ?? 'Aucune description' }}</p>
             </div>
 
@@ -60,10 +60,11 @@
                         <div class="text-center p-4 bg-amber-50 rounded-xl">
                             <p class="text-amber-700 text-sm">Vous etes le vendeur de cette transaction.</p>
                             <a href="{{ route('transactions.show', $transaction) }}" class="mt-2 inline-block text-emerald-600 hover:text-emerald-700 font-medium text-sm">
-                                Voir mon tableau de bord →
+                                Voir mon tableau de bord &rarr;
                             </a>
                         </div>
                     @else
+                        <!-- FORMULAIRE POST (pas un lien GET) -->
                         <form method="POST" action="{{ route('transactions.claim', $transaction->reference) }}">
                             @csrf
                             <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">

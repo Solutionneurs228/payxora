@@ -19,13 +19,13 @@ enum TransactionStatus: string
         return match($this) {
             self::DRAFT => 'Brouillon',
             self::PENDING_PAYMENT => 'En attente de paiement',
-            self::FUNDED => 'Paye — En sequestre',
-            self::SHIPPED => 'Expedie',
-            self::DELIVERED => 'Livre',
-            self::COMPLETED => 'Termine',
+            self::FUNDED => 'Payé — En sequestre',
+            self::SHIPPED => 'Expedié',
+            self::DELIVERED => 'Livré',
+            self::COMPLETED => 'Terminé',
             self::DISPUTED => 'En litige',
-            self::REFUNDED => 'Rembourse',
-            self::CANCELLED => 'Annule',
+            self::REFUNDED => 'Remboursé',
+            self::CANCELLED => 'Annulé',
         };
     }
 

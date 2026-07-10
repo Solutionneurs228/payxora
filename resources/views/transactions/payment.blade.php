@@ -7,7 +7,7 @@
     <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <div class="px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600">
             <h1 class="text-xl font-bold text-white">Paiement securise</h1>
-            <p class="text-green-100 text-sm mt-1">{{ $transaction->product_name }}</p>
+            <p class="text-green-100 text-sm mt-1">{{ $transaction->title }}</p>
         </div>
 
         <div class="p-6">
@@ -24,30 +24,33 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Operateur Mobile Money</label>
                     <div class="grid grid-cols-2 gap-3">
                         <label class="cursor-pointer">
-                            <input type="radio" name="provider" value="tmoney" class="peer sr-only" required>
+                            <input type="radio" name="method" value="tmoney" class="peer sr-only" required>
                             <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-indigo-600 peer-checked:bg-indigo-50 transition hover:border-indigo-300">
                                 <div class="w-10 h-10 bg-blue-600 rounded-full mx-auto mb-2 flex items-center justify-center text-white font-bold text-xs">T</div>
                                 <span class="text-sm font-medium text-gray-700">TMoney</span>
                             </div>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="radio" name="provider" value="moov" class="peer sr-only">
+                            <input type="radio" name="method" value="moov" class="peer sr-only">
                             <div class="border-2 border-gray-200 rounded-lg p-4 text-center peer-checked:border-indigo-600 peer-checked:bg-indigo-50 transition hover:border-indigo-300">
                                 <div class="w-10 h-10 bg-orange-500 rounded-full mx-auto mb-2 flex items-center justify-center text-white font-bold text-xs">M</div>
                                 <span class="text-sm font-medium text-gray-700">Moov</span>
                             </div>
                         </label>
                     </div>
-                    @error('provider')
+                    @error('method')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
 
                 <div>
-                    <label for="phone_number" class="block text-sm font-medium text-gray-700 mb-1">Numero de telephone</label>
-                    <input type="tel" name="phone_number" id="phone_number" required placeholder="90000000"
-                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition @error('phone_number') border-red-500 @enderror">
-                    @error('phone_number')
+                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Numero de telephone</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">+228</span>
+                        <input type="tel" name="phone" id="phone" required placeholder="90000000"
+                            class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition @error('phone') border-red-500 @enderror">
+                    </div>
+                    @error('phone')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
