@@ -14,8 +14,8 @@ class DatabaseSeeder extends Seeder
         // Admin
         $admin = User::create([
             'name' => 'Admin PayXora',
-            'email' => 'admin@payxora.tg',
-            'phone' => '+22890000000',
+            'email' => 'aessotchossim@gmail.com',
+            'phone' => '+22892671533',
             'password' => Hash::make('password'),
             'role' => 'admin',
             'kyc_status' => 'verified',

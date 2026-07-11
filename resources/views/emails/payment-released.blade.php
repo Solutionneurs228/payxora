@@ -1,25 +1,23 @@
 @extends('layouts.app')
 
-@section('title', 'Paiement reçu')
+@section('title', 'Paiement libéré')
 
 @section('content')
     <div class="container">
         <div class="header">
-            <h1>💰 Paiement reçu !</h1>
+            <h1>✅ Paiement libéré !</h1>
         </div>
         <div class="content">
-            <p>Bonjour {{ $seller->name ?? 'Vendeur' }},</p>
+            <p>Bonjour {{ $user->name ?? 'Utilisateur' }},</p>
             
-            <p>Un acheteur vient d'effectuer un paiement pour votre transaction.</p>
+            <p>Le paiement pour votre transaction <strong>{{ $transaction->title ?? 'N/A' }}</strong> a été libéré avec succès.</p>
             
             <div class="details">
-                <p><strong>Transaction :</strong> {{ $transaction->title ?? 'N/A' }}</p>
                 <p><strong>Montant :</strong> <span class="amount">{{ number_format($transaction->amount, 0, ',', ' ') }} FCFA</span></p>
-                <p><strong>Méthode :</strong> {{ strtoupper($transaction->payment_method ?? 'Mobile Money') }}</p>
-                <p><strong>Référence :</strong> {{ $transaction->payment_reference ?? 'N/A' }}</p>
+                <p><strong>Référence :</strong> {{ $transaction->reference ?? 'N/A' }}</p>
             </div>
             
-            <p>Le montant est maintenant sécurisé dans notre système d'escrow. Vous pouvez procéder à l'expédition de l'article.</p>
+            <p>Les fonds sont maintenant disponibles sur votre compte.</p>
             
             <a href="{{ route('transactions.show', $transaction) }}" class="btn">Voir la transaction</a>
             

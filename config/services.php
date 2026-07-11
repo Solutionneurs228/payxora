@@ -40,10 +40,9 @@ return [
     | Brevo (ex-Sendinblue) - Emails transactionnels
     |--------------------------------------------------------------------------
     */
-    'brevo' => [
-        'key'        => env('BREVO_API_KEY'),
-        'from_email' => env('BREVO_FROM_EMAIL', 'noreply@payxora.tg'),
-        'from_name'  => env('BREVO_FROM_NAME', 'PayXora'),
+     'brevo' => [
+        'key' => env('BREVO_API_KEY'),
+        'sender' => env('MAIL_FROM_ADDRESS', 'noreply@payxora.com'),
     ],
 
 ];

@@ -1,19 +1,23 @@
 @extends('layouts.app')
 
-@section('title', 'Bienvenue sur PayXora')
+@section('title', 'KYC approuvé')
 
 @section('content')
     <div class="container">
         <div class="header">
-            <h1>👋 Bienvenue sur PayXora, {{ $user->name }} !</h1>
+            <h1>🎉 Vérification KYC approuvée !</h1>
         </div>
         <div class="content">
-            <p>Votre compte a été créé avec succès. Vous pouvez maintenant :</p>
+            <p>Bonjour {{ $user->name }},</p>
+            
+            <p>Votre vérification d'identité a été <strong>approuvée</strong> avec succès.</p>
+            
+            <p>Vous avez maintenant accès à toutes les fonctionnalités de PayXora :</p>
             
             <ul style="color: #374151; line-height: 1.8; padding-left: 20px;">
-                <li>Créer des transactions sécurisées</li>
-                <li>Effectuer des paiements en toute confiance</li>
-                <li>Suivre vos transactions en temps réel</li>
+                <li>Créer des transactions sans limite</li>
+                <li>Effectuer des paiements sécurisés</li>
+                <li>Retirer vos fonds</li>
             </ul>
             
             <a href="{{ route('dashboard') }}" class="btn">Accéder à mon tableau de bord</a>

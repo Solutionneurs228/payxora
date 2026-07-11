@@ -14,8 +14,8 @@ class UserSeeder extends Seeder
         // Admin
         $admin = User::create([
             'name' => 'Administrateur PayXora',
-            'email' => 'admin@payxora.tg',
-            'phone' => '+22890123456',
+            'email' => 'aessotchossim@gmail.com',
+            'phone' => '+22892671533',
             'password' => Hash::make('password'),
             'role' => 'admin',
             'is_active' => true,

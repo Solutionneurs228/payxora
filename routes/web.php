@@ -12,6 +12,8 @@ use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;   // ← AJOUTÉ
+use App\Http\Controllers\Auth\NewPasswordController;           // ← AJOUTÉ
 use App\Http\Controllers\Auth\PhoneVerificationController;
 use App\Http\Controllers\Auth\KycController;
 use App\Http\Controllers\Admin\AdminController;
@@ -44,10 +46,12 @@ Route::middleware('guest')->group(function () {
     Route::post('/inscription', [RegisterController::class, 'store'])->name('register.store');
     Route::get('/connexion', [LoginController::class, 'show'])->name('login');
     Route::post('/connexion', [LoginController::class, 'store'])->name('login.store');
-    Route::get('/mot-de-passe-oublie', [LoginController::class, 'showForgot'])->name('password.request');
-    Route::post('/mot-de-passe-oublie', [LoginController::class, 'sendResetLink'])->name('password.email');
-    Route::get('/reinitialiser-mot-de-passe/{token}', [LoginController::class, 'showReset'])->name('password.reset');
-    Route::post('/reinitialiser-mot-de-passe', [LoginController::class, 'reset'])->name('password.update');
+
+    // Reset password via Breeze (Brevo SMTP)
+    Route::get('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::get('/reinitialiser-mot-de-passe/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reinitialiser-mot-de-passe', [NewPasswordController::class, 'store'])->name('password.store');
 
     // OTP Telephone
     Route::get('/verification-telephone', [PhoneVerificationController::class, 'show'])->name('verify.phone.show');
@@ -73,7 +77,7 @@ Route::middleware('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| KYC (Auth) - Routes compatibles navigation existante
+| KYC (Auth)
 |--------------------------------------------------------------------------
 */
 
@@ -84,12 +88,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/kyc/verification', [KycController::class, 'verification'])->name('kyc.verification');
     Route::get('/kyc/document/{type}/{id}', [KycController::class, 'document'])->name('kyc.document');
 
-        Route::post('/transactions/{transaction}/ship', [TransactionController::class, 'ship'])
+    Route::post('/transactions/{transaction}/ship', [TransactionController::class, 'ship'])
         ->name('transactions.ship');
     
     Route::post('/transactions/{transaction}/receive', [TransactionController::class, 'receive'])
         ->name('transactions.receive');
-
 });
 
 /*
@@ -126,14 +129,14 @@ Route::middleware(['auth', 'kyc'])->group(function () {
     Route::post('/transactions/{transaction}/annuler', [TransactionController::class, 'cancel'])->name('transactions.cancel');
     Route::get('/transactions/{transaction}/payer', [TransactionController::class, 'pay'])->name('transactions.pay');
 
-Route::get('/t/{reference}', [TransactionController::class, 'showPublic'])
-    ->name('transactions.public')
-    ->where('reference', 'PAYX-[A-Z0-9]+');
+    Route::get('/t/{reference}', [TransactionController::class, 'showPublic'])
+        ->name('transactions.public')
+        ->where('reference', 'PAYX-[A-Z0-9]+');
 
-Route::post('/t/{reference}/claim', [TransactionController::class, 'claim'])
-    ->name('transactions.claim')
-    ->middleware('auth')
-    ->where('reference', 'PAYX-[A-Z0-9]+');
+    Route::post('/t/{reference}/claim', [TransactionController::class, 'claim'])
+        ->name('transactions.claim')
+        ->middleware('auth')
+        ->where('reference', 'PAYX-[A-Z0-9]+');
 
     // Litiges
     Route::post('/transactions/{transaction}/litige', [DisputeController::class, 'store'])->name('disputes.store');
@@ -208,6 +211,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/litiges/{dispute}/fermer', [DisputeAdminController::class, 'close'])->name('disputes.close');
 });
 
+/*
+|--------------------------------------------------------------------------
+| Test email
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/test-mail', function () {
     Mail::raw('Brevo fonctionne', function ($message) {
@@ -215,4 +223,13 @@ Route::get('/test-mail', function () {
                 ->subject('Test Brevo');
     });
     return 'Mail envoye';
+});
+
+
+Route::get('/test-config-brevo', function () {
+    return [
+        'env_key' => env('BREVO_API_KEY'),
+        'config_key' => config('services.brevo.key'),
+        'config_services' => config('services'),
+    ];
 });
