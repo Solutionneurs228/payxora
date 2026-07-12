@@ -16,39 +16,23 @@ class LoginController extends Controller
 
     public function store(Request $request)
     {
-        $credentials = $request->validate([
+       $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
-            'remember' => ['boolean'],
         ]);
 
-        $remember = $credentials['remember'] ?? false;
+        // Récupère "remember" explicitement
+        $remember = $request->boolean('remember');
 
-        if (Auth::attempt([
-            'email' => $credentials['email'],
-            'password' => $credentials['password'],
-        ], $remember)) {
-            $request->session()->regenerate();
-
-            $user = Auth::user();
-
-            // REDIRECTION ADMIN
-            if ($user->role === 'admin') {
-                return redirect()->intended(route('admin.dashboard'));
-            }
-
-            // REDIRECTION KYC NON VERIFIE
-            if (!$user->isKycVerified()) {
-                return redirect()->route('kyc.show')
-                    ->with('warning', 'Veuillez completer votre verification KYC.');
-            }
-
-            return redirect()->intended(route('dashboard'));
+        if (!Auth::attempt($credentials, $remember)) {
+            throw ValidationException::withMessages([
+                'email' => __('Ces identifiants ne correspondent pas a nos enregistrements.'),
+            ]);
         }
 
-        throw ValidationException::withMessages([
-            'email' => 'Ces identifiants ne correspondent pas a nos enregistrements.',
-        ]);
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard'));
     }
 
     public function showForgot()

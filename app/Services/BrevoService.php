@@ -148,4 +148,18 @@ class BrevoService
             Log::error('Brevo buyer found email exception: '.$e->getMessage());
         }
     }
+
+    public static function sendItemShipped(User $user, Transaction $transaction): bool
+{
+    $html = view('emails.item-shipped', [
+        'user' => $user,
+        'transaction' => $transaction,
+    ])->render();
+
+    return self::sendEmail(
+        $user->email,
+        'Article expedie - PayXora',
+        $html
+    );
+}
 }
