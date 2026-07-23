@@ -116,7 +116,7 @@ Route::middleware(['auth', 'kyc'])->group(function () {
     Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
 
     // Workflow Escrow — CORRIGÉ : une seule définition, pas de doublon
-    Route::post('/transactions/{transaction}/publier', [TransactionController::class, 'publish'])->name('transactions.publish');
+    // Route::post('/transactions/{transaction}/publier', [TransactionController::class, 'publish'])->name('transactions.publish');
     Route::post('/transactions/{transaction}/expedier', [TransactionController::class, 'ship'])->name('transactions.ship');
     Route::post('/transactions/{transaction}/livrer', [TransactionController::class, 'deliver'])->name('transactions.deliver');
     Route::post('/transactions/{transaction}/confirmer', [TransactionController::class, 'receive'])->name('transactions.receive');

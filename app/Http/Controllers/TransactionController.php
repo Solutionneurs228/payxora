@@ -44,34 +44,34 @@ class TransactionController extends Controller
     /**
      * Créer une nouvelle transaction
      */
-public function store(Request $request)
-{
-    $validated = $request->validate([
-        'product_name' => ['required', 'string', 'max:255'],
-        'product_description' => ['nullable', 'string', 'max:1000'],
-        'amount' => ['required', 'numeric', 'min:1000'],
-        'shipping_address' => ['required', 'string', 'max:500'],
-        'seller_notes' => ['nullable', 'string', 'max:500'],
-    ]);
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'product_name' => ['required', 'string', 'max:255'],
+            'product_description' => ['nullable', 'string', 'max:1000'],
+            'amount' => ['required', 'numeric', 'min:1000'],
+            'shipping_address' => ['required', 'string', 'max:500'],
+            'seller_notes' => ['nullable', 'string', 'max:500'],
+        ]);
 
-    $transaction = Transaction::create([
-        'product_name' => $validated['product_name'],           // ← OBLIGATOIRE
-        'product_description' => $validated['product_description'] ?? null,
-        'amount' => $validated['amount'],
-        'shipping_address' => $validated['shipping_address'],   // ← OBLIGATOIRE
-        'seller_notes' => $validated['seller_notes'] ?? null,
-        'reference' => 'PAYX-' . Str::upper(Str::random(8)),
-        'seller_id' => Auth::id(),
-        'status' => TransactionStatus::PENDING_PAYMENT->value,
-        'commission_amount' => $validated['amount'] * 0.03,
-        'net_amount' => $validated['amount'] * 0.97,
-    ]);
+        $transaction = Transaction::create([
+            'product_name' => $validated['product_name'],
+            'product_description' => $validated['product_description'] ?? null,
+            'amount' => $validated['amount'],
+            'shipping_address' => $validated['shipping_address'],
+            'seller_notes' => $validated['seller_notes'] ?? null,
+            'reference' => 'PAYX-' . Str::upper(Str::random(8)),
+            'seller_id' => Auth::id(),
+            'status' => TransactionStatus::PENDING_PAYMENT->value,
+            'commission_amount' => $validated['amount'] * 0.03,
+            'net_amount' => $validated['amount'] * 0.97,
+        ]);
 
-    ActivityLog::log('transaction_created', $transaction, Auth::user());
+        ActivityLog::log('transaction_created', $transaction, Auth::user());
 
-    return redirect()->route('transactions.show', $transaction)
-        ->with('success', 'Transaction créée. Partagez ce lien avec l\'acheteur.');
-}
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', 'Transaction créée. Partagez ce lien avec l\'acheteur.');
+    }
 
     /**
      * Afficher une transaction
@@ -79,8 +79,7 @@ public function store(Request $request)
     public function show(Transaction $transaction)
     {
         $this->authorizeAccess($transaction);
-        // $transaction->load(['seller', 'buyer', 'escrow', 'payments', 'disputes']);
-        $transaction->load(['seller', 'buyer', 'escrow', 'disputes']);
+        $transaction->load(['seller', 'buyer', 'escrow', 'dispute']);
         return view('transactions.show', compact('transaction'));
     }
 
@@ -132,7 +131,7 @@ public function store(Request $request)
         ]);
 
         return redirect()->route('transactions.show', $transaction)
-            ->with('success', 'Transaction mise a jour.');
+            ->with('success', 'Transaction mise à jour.');
     }
 
     /**
@@ -153,31 +152,13 @@ public function store(Request $request)
         $transaction->delete();
 
         return redirect()->route('transactions.index')
-            ->with('success', 'Transaction supprimee.');
+            ->with('success', 'Transaction supprimée.');
     }
 
     /**
-     * Publier la transaction (rendre visible aux acheteurs)
+     * SUPPRIMÉ : publish() — pas besoin de is_published
+     * Une transaction créée est immédiatement active.
      */
-    public function publish(Transaction $transaction)
-    {
-        $this->authorizeAccess($transaction);
-
-        if ($transaction->seller_id !== Auth::id()) {
-            abort(403);
-        }
-
-        if ($transaction->status !== TransactionStatus::PENDING_PAYMENT->value) {
-            return back()->with('error', 'Cette transaction ne peut pas etre publiee.');
-        }
-
-        $transaction->update([
-            'is_published' => true,
-        ]);
-
-        return redirect()->route('transactions.show', $transaction)
-            ->with('success', 'Transaction publiee.');
-    }
 
     /**
      * Page de paiement
@@ -189,7 +170,7 @@ public function store(Request $request)
         }
 
         if (!$transaction->isPending()) {
-            return back()->with('error', 'Cette transaction ne peut plus etre payee.');
+            return back()->with('error', 'Cette transaction ne peut plus être payée.');
         }
 
         $transaction->update(['buyer_id' => Auth::id()]);
@@ -199,11 +180,11 @@ public function store(Request $request)
 
     /**
      * Afficher une transaction publique par référence
+     * SUPPRIMÉ : ->where('is_published', true)
      */
     public function showPublic(string $reference)
     {
         $transaction = Transaction::where('reference', $reference)
-            ->where('is_published', true)
             ->with('seller')
             ->firstOrFail();
 
@@ -219,7 +200,7 @@ public function store(Request $request)
         $transaction = Transaction::where('reference', $reference)->firstOrFail();
 
         if ($transaction->buyer_id) {
-            return back()->with('error', 'Cette transaction a deja un acheteur.');
+            return back()->with('error', 'Cette transaction a déjà un acheteur.');
         }
 
         $transaction->update([
@@ -228,7 +209,7 @@ public function store(Request $request)
         ]);
 
         return redirect()->route('transactions.show', $transaction)
-            ->with('success', 'Vous etes maintenant l\'acheteur de cette transaction.');
+            ->with('success', 'Vous êtes maintenant l\'acheteur de cette transaction.');
     }
 
     /**
@@ -239,11 +220,11 @@ public function store(Request $request)
         $this->authorizeAccess($transaction);
 
         if ($transaction->seller_id !== Auth::id()) {
-            return back()->with('error', 'Vous n\'etes pas autorise a effectuer cette action.');
+            return back()->with('error', 'Vous n\'êtes pas autorisé à effectuer cette action.');
         }
 
         if ($transaction->status !== TransactionStatus::FUNDED->value) {
-            return back()->with('error', 'Cette transaction n\'est pas encore payee.');
+            return back()->with('error', 'Cette transaction n\'est pas encore payée.');
         }
 
         try {
@@ -255,8 +236,8 @@ public function store(Request $request)
             Notification::create([
                 'user_id' => $transaction->buyer_id,
                 'type' => 'transaction_shipped',
-                'title' => 'Commande expediee',
-                'message' => 'Votre commande "' . $transaction->product_name . '" a été expediée par le vendeur.',
+                'title' => 'Commande expédiée',
+                'message' => 'Votre commande "' . $transaction->product_name . '" a été expédiée par le vendeur.',
                 'link' => route('transactions.show', $transaction),
                 'read' => false,
             ]);
@@ -273,10 +254,10 @@ public function store(Request $request)
             ]);
 
             return redirect()->route('transactions.show', $transaction)
-                ->with('success', 'Commande marquée comme expediée. L\'acheteur a été notifié.');
+                ->with('success', 'Commande marquée comme expédiée. L\'acheteur a été notifié.');
 
         } catch (\Exception $e) {
-            Log::error('Erreur expedition', [
+            Log::error('Erreur expédition', [
                 'transaction_id' => $transaction->id,
                 'error' => $e->getMessage(),
             ]);
@@ -285,20 +266,18 @@ public function store(Request $request)
     }
 
     /**
-     * Marque la commande comme livrée (par le vendeur ou système)
-     * L'acheteur peut aussi confirmer directement depuis SHIPPED
+     * Marque la commande comme livrée
      */
     public function deliver(Request $request, Transaction $transaction)
     {
         $this->authorizeAccess($transaction);
 
-        // Le vendeur peut marquer comme livré
         if ($transaction->seller_id !== Auth::id()) {
             abort(403, 'Seul le vendeur peut marquer la commande comme livrée.');
         }
 
         if ($transaction->status !== TransactionStatus::SHIPPED->value) {
-            return back()->with('error', 'Cette transaction n\'est pas encore expediée.');
+            return back()->with('error', 'Cette transaction n\'est pas encore expédiée.');
         }
 
         try {
@@ -337,33 +316,29 @@ public function store(Request $request)
 
     /**
      * L'acheteur confirme avoir reçu → libère le paiement → COMPLETED
-     * CORRECTION : Accepte aussi SHIPPED (si pas de livraison intermédiaire)
      */
     public function receive(Request $request, Transaction $transaction)
     {
         $this->authorizeAccess($transaction);
 
         if ($transaction->buyer_id !== Auth::id()) {
-            abort(403, 'Seul l\'acheteur peut confirmer la reception.');
+            abort(403, 'Seul l\'acheteur peut confirmer la réception.');
         }
 
-        // CORRECTION : Accepte DELIVERED ou SHIPPED
         if (!in_array($transaction->status, [
             TransactionStatus::DELIVERED->value,
             TransactionStatus::SHIPPED->value,
         ])) {
-            return back()->with('error', 'Cette transaction n\'est pas encore expediée ou livrée.');
+            return back()->with('error', 'Cette transaction n\'est pas encore expédiée ou livrée.');
         }
 
         try {
             DB::transaction(function () use ($transaction) {
-                // 1. Passe le statut à COMPLETED
                 $transaction->update([
                     'status' => TransactionStatus::COMPLETED->value,
                     'completed_at' => now(),
                 ]);
 
-                // 2. Libère les fonds du séquestre
                 if ($transaction->escrow) {
                     $transaction->escrow->update([
                         'status' => 'released',
@@ -371,7 +346,6 @@ public function store(Request $request)
                     ]);
                 }
 
-                // 3. Notifie le vendeur
                 Notification::create([
                     'user_id' => $transaction->seller_id,
                     'type' => 'transaction_completed',
@@ -381,7 +355,6 @@ public function store(Request $request)
                     'read' => false,
                 ]);
 
-                // 4. Email au vendeur
                 BrevoService::sendPaymentReleased($transaction->seller, $transaction);
 
                 ActivityLog::log('delivery_confirmed', $transaction, Auth::user());
@@ -396,10 +369,10 @@ public function store(Request $request)
             ]);
 
             return redirect()->route('transactions.show', $transaction)
-                ->with('success', 'Reception confirmée. Le vendeur a été payé.');
+                ->with('success', 'Réception confirmée. Le vendeur a été payé.');
 
         } catch (\Exception $e) {
-            Log::error('Erreur liberation paiement', [
+            Log::error('Erreur libération paiement', [
                 'transaction_id' => $transaction->id,
                 'error' => $e->getMessage(),
             ]);
@@ -415,7 +388,7 @@ public function store(Request $request)
         $this->authorizeAccess($transaction);
 
         if (!$transaction->canBeCancelled()) {
-            return back()->with('error', 'Cette transaction ne peut plus etre annulée.');
+            return back()->with('error', 'Cette transaction ne peut plus être annulée.');
         }
 
         $transaction->update([
@@ -423,7 +396,6 @@ public function store(Request $request)
             'cancelled_at' => now(),
         ]);
 
-        // Rembourser si déjà payé
         if ($transaction->escrow && in_array($transaction->escrow->status, ['funded', 'held'])) {
             $transaction->escrow->update([
                 'status' => 'refunded',
@@ -452,7 +424,7 @@ public function store(Request $request)
             TransactionStatus::DELIVERED->value,
             TransactionStatus::SHIPPED->value,
         ])) {
-            return back()->with('error', 'La transaction doit etre expediée ou livrée avant d\'etre completée.');
+            return back()->with('error', 'La transaction doit être expédiée ou livrée avant d\'être complétée.');
         }
 
         return $this->receive($request, $transaction);
@@ -465,7 +437,6 @@ public function store(Request $request)
     {
         $this->authorizeAccess($transaction);
 
-        // Vérifie que la transaction est en cours (pas déjà terminée ou annulée)
         if (!in_array($transaction->status, [
             TransactionStatus::FUNDED->value,
             TransactionStatus::SHIPPED->value,
@@ -474,8 +445,7 @@ public function store(Request $request)
             return back()->with('error', 'Impossible d\'ouvrir un litige sur cette transaction.');
         }
 
-        // Vérifie qu'il n'y a pas déjà un litige ouvert
-        if ($transaction->disputes()->where('status', 'open')->exists()) {
+        if ($transaction->dispute()->where('status', 'open')->exists()) {
             return back()->with('error', 'Un litige est déjà ouvert pour cette transaction.');
         }
 
@@ -493,28 +463,25 @@ public function store(Request $request)
                 'status' => 'open',
             ]);
 
-            // Met à jour le statut de la transaction
             $transaction->update([
                 'status' => TransactionStatus::DISPUTED->value,
             ]);
 
-            // Bloque les fonds en séquestre
             if ($transaction->escrow) {
                 $transaction->escrow->update([
                     'status' => 'disputed',
                 ]);
             }
 
-            // Notifie l'autre partie
-            $otherPartyId = ($transaction->buyer_id === Auth::id()) 
-                ? $transaction->seller_id 
+            $otherPartyId = ($transaction->buyer_id === Auth::id())
+                ? $transaction->seller_id
                 : $transaction->buyer_id;
 
             Notification::create([
                 'user_id' => $otherPartyId,
                 'type' => 'dispute_opened',
                 'title' => 'Litige ouvert',
-                'message' => 'Un litige a ete ouvert sur la transaction "' . $transaction->product_name . '".',
+                'message' => 'Un litige a été ouvert sur la transaction "' . $transaction->product_name . '".',
                 'link' => route('disputes.show', $dispute),
                 'read' => false,
             ]);
