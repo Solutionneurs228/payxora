@@ -12,8 +12,8 @@ use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;   // ← AJOUTÉ
-use App\Http\Controllers\Auth\NewPasswordController;           // ← AJOUTÉ
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PhoneVerificationController;
 use App\Http\Controllers\Auth\KycController;
 use App\Http\Controllers\Admin\AdminController;
@@ -47,7 +47,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/connexion', [LoginController::class, 'show'])->name('login');
     Route::post('/connexion', [LoginController::class, 'store'])->name('login.store');
 
-    // Reset password via Breeze (Brevo SMTP)
+    // Reset password
     Route::get('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'store'])->name('password.email');
     Route::get('/reinitialiser-mot-de-passe/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
@@ -87,12 +87,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/kyc', [KycController::class, 'store'])->name('kyc.store');
     Route::get('/kyc/verification', [KycController::class, 'verification'])->name('kyc.verification');
     Route::get('/kyc/document/{type}/{id}', [KycController::class, 'document'])->name('kyc.document');
-
-    Route::post('/transactions/{transaction}/ship', [TransactionController::class, 'ship'])
-        ->name('transactions.ship');
-    
-    Route::post('/transactions/{transaction}/receive', [TransactionController::class, 'receive'])
-        ->name('transactions.receive');
 });
 
 /*
@@ -121,11 +115,11 @@ Route::middleware(['auth', 'kyc'])->group(function () {
     Route::patch('/transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
     Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
 
-    // Workflow Escrow
+    // Workflow Escrow — CORRIGÉ : une seule définition, pas de doublon
     Route::post('/transactions/{transaction}/publier', [TransactionController::class, 'publish'])->name('transactions.publish');
     Route::post('/transactions/{transaction}/expedier', [TransactionController::class, 'ship'])->name('transactions.ship');
-    Route::post('/transactions/{transaction}/livrer', [TransactionController::class, 'receive'])->name('transactions.receive');
-    Route::post('/transactions/{transaction}/confirmer', [TransactionController::class, 'complete'])->name('transactions.complete');
+    Route::post('/transactions/{transaction}/livrer', [TransactionController::class, 'deliver'])->name('transactions.deliver');
+    Route::post('/transactions/{transaction}/confirmer', [TransactionController::class, 'receive'])->name('transactions.receive');
     Route::post('/transactions/{transaction}/annuler', [TransactionController::class, 'cancel'])->name('transactions.cancel');
     Route::get('/transactions/{transaction}/payer', [TransactionController::class, 'pay'])->name('transactions.pay');
 
@@ -139,7 +133,7 @@ Route::middleware(['auth', 'kyc'])->group(function () {
         ->where('reference', 'PAYX-[A-Z0-9]+');
 
     // Litiges
-    Route::post('/transactions/{transaction}/litige', [DisputeController::class, 'store'])->name('disputes.store');
+    Route::post('/transactions/{transaction}/litige', [TransactionController::class, 'openDispute'])->name('disputes.store');
     Route::get('/litiges', [DisputeController::class, 'index'])->name('disputes.index');
     Route::get('/litiges/{dispute}', [DisputeController::class, 'show'])->name('disputes.show');
     Route::post('/litiges/{dispute}/reponse', [DisputeController::class, 'reply'])->name('disputes.reply');
@@ -224,7 +218,6 @@ Route::get('/test-mail', function () {
     });
     return 'Mail envoye';
 });
-
 
 Route::get('/test-config-brevo', function () {
     return [

@@ -18,39 +18,50 @@
                         <th class="px-6 py-3 font-medium">Montant</th>
                         <th class="px-6 py-3 font-medium">Statut</th>
                         <th class="px-6 py-3 font-medium">Date</th>
-                        <th class="px-6 py-3 font-medium">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($transactions as $tx)
-                    <tr class="hover:bg-gray-50 transition">
+                    <tr class="hover:bg-gray-50 transition cursor-pointer"
+                        onclick="window.location='{{ route('admin.transactions.show', $tx) }}'">
                         <td class="px-6 py-4 font-mono text-xs text-gray-600">{{ $tx->reference }}</td>
                         <td class="px-6 py-4 font-medium text-gray-900">{{ Str::limit($tx->product_name, 30) }}</td>
-                        <td class="px-6 py-4 text-gray-600">{{ $tx->seller->name }}</td>
-                        <td class="px-6 py-4 text-gray-600">{{ $tx->buyer?->name ?? '-' }}</td>
+                        <td class="px-6 py-4">
+                            <a href="{{ route('admin.users.show', $tx->seller) }}"
+                               class="text-indigo-600 hover:text-indigo-800 hover:underline"
+                               onclick="event.stopPropagation();">
+                                {{ $tx->seller->name }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4">
+                            @if($tx->buyer)
+                                <a href="{{ route('admin.users.show', $tx->buyer) }}"
+                                   class="text-indigo-600 hover:text-indigo-800 hover:underline"
+                                   onclick="event.stopPropagation();">
+                                    {{ $tx->buyer->name }}
+                                </a>
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 font-medium">{{ number_format($tx->amount, 0, ',', ' ') }} FCFA</td>
                         <td class="px-6 py-4">
                             <x-status-badge :status="$tx->status->value" />
                         </td>
-                        <td class="px-6 py-4 text-gray-500">{{ $tx->created_at->format('d/m/Y') }}</td>
-                        <td class="px-6 py-4">
-                            <a href="{{ route('admin.transactions.show', $tx) }}" class="text-indigo-600 hover:text-indigo-800 font-medium transition">Voir</a>
-                        </td>
+                        <td class="px-6 py-4 text-gray-500">{{ $tx->created_at->format('d/m/Y H:i') }}</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-12 text-center text-gray-500">Aucune transaction</td>
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-500">Aucune transaction</td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
 
-    @if($transactions->hasPages())
-    <div class="mt-6">
-        {{ $transactions->links() }}
+        <div class="px-6 py-4 border-t border-gray-100">
+            {{ $transactions->links() }}
+        </div>
     </div>
-    @endif
 </div>
 @endsection

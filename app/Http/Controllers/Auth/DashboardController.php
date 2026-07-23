@@ -28,7 +28,7 @@ class DashboardController extends Controller
                 ->where('status', TransactionStatus::PENDING_PAYMENT->value)
                 ->count(),
 
-            // Séquestre = FUNDED + SHIPPED + DELIVERED (fonds bloqués)
+            // CORRECTION : Utiliser ->value pour les enums
             'active_escrow' => Transaction::where(function ($q) use ($user) {
                     $q->where('seller_id', $user->id)->orWhere('buyer_id', $user->id);
                 })
@@ -39,19 +39,16 @@ class DashboardController extends Controller
                 ])
                 ->count(),
 
-            // Terminées = COMPLETED uniquement
             'completed_transactions' => Transaction::where(function ($q) use ($user) {
                     $q->where('seller_id', $user->id)->orWhere('buyer_id', $user->id);
                 })
                 ->where('status', TransactionStatus::COMPLETED->value)
                 ->count(),
 
-            // Ventes = somme des net_amount en COMPLETED
             'total_sales' => Transaction::where('seller_id', $user->id)
                 ->where('status', TransactionStatus::COMPLETED->value)
                 ->sum('net_amount'),
 
-            // Achats = somme des amount en COMPLETED
             'total_purchases' => Transaction::where('buyer_id', $user->id)
                 ->where('status', TransactionStatus::COMPLETED->value)
                 ->sum('amount'),

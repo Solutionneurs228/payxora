@@ -13,8 +13,8 @@ return new class extends Migration
             $table->string('reference', 50)->unique();
             $table->foreignId('buyer_id')->nullable()->constrained('users')->nullOnDelete();            
             $table->foreignId('seller_id')->constrained('users')->restrictOnDelete();
-            $table->string('title', 255);
-            $table->text('description')->nullable();
+            $table->string('product_name', 255);
+            $table->text('product_description')->nullable();
             $table->decimal('amount', 12, 2);
             $table->decimal('commission_amount', 12, 2)->default(0);
             $table->decimal('net_amount', 12, 2)->default(0);

@@ -34,14 +34,17 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @foreach($users as $user)
-                <tr class="{{ !$user->is_active ? 'bg-red-50' : '' }}">
+                <tr class="{{ !$user->is_active ? 'bg-red-50' : '' }} hover:bg-gray-50 transition cursor-pointer"
+                    onclick="window.location='{{ route('admin.users.show', $user) }}'">
                     <td class="px-4 py-4 whitespace-nowrap">
                         <div class="flex items-center">
                             <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs mr-3">
                                 {{ $user->initials }}
                             </div>
                             <div>
-                                <a href="{{ route('admin.users.show', $user) }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                                <a href="{{ route('admin.users.show', $user) }}"
+                                   class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                                   onclick="event.stopPropagation();">
                                     {{ $user->name }}
                                 </a>
                                 <p class="text-xs text-gray-500">Inscrit {{ $user->created_at->diffForHumans() }}</p>
@@ -49,7 +52,11 @@
                         </div>
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <p>{{ $user->email }}</p>
+                        <a href="{{ route('admin.users.show', $user) }}"
+                           class="hover:text-indigo-600 hover:underline"
+                           onclick="event.stopPropagation();">
+                            {{ $user->email }}
+                        </a>
                         <p>{{ $user->phone }}</p>
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap">
@@ -113,26 +120,32 @@
                         @endif
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm space-y-2">
-                        {{-- BOUTON VOIR KYC - toujours visible --}}
                         @if($user->kyc)
-                            <a href="{{ route('admin.users.show', $user) }}" class="inline-block px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition w-full text-center">
+                            <a href="{{ route('admin.users.show', $user) }}"
+                               class="inline-block px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition w-full text-center"
+                               onclick="event.stopPropagation();">
                                 Voir KYC
                             </a>
                         @endif
 
-                        {{-- SUSPENDRE / REACTIVER --}}
                         @if($user->is_active)
-                            <form method="POST" action="{{ route('admin.users.suspend', $user) }}" onsubmit="return confirm('Suspendre cet utilisateur ?')">
+                            <form method="POST" action="{{ route('admin.users.suspend', $user) }}"
+                                  onsubmit="event.stopPropagation(); return confirm('Suspendre cet utilisateur ?');">
                                 @csrf
                                 <input type="hidden" name="reason" value="Suspension admin">
-                                <button type="submit" class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition w-full">
+                                <button type="submit"
+                                        class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition w-full"
+                                        onclick="event.stopPropagation();">
                                     Suspendre
                                 </button>
                             </form>
                         @else
-                            <form method="POST" action="{{ route('admin.users.suspend', $user) }}">
+                            <form method="POST" action="{{ route('admin.users.suspend', $user) }}"
+                                  onclick="event.stopPropagation();">
                                 @csrf
-                                <button type="submit" class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition w-full">
+                                <button type="submit"
+                                        class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition w-full"
+                                        onclick="event.stopPropagation();">
                                     Reactiver
                                 </button>
                             </form>
